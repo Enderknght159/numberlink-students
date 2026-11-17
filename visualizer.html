@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NumberLink — Algorithm Visualizer</title>
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --panel:#12141a;
+    --panel-2:#171a21;
+    --line:#242830;
+    --line-2:#2e333d;
+    --ink:#e9ebef;
+    --dim:#8d949f;
+    --dimmer:#626973;
+    --accent:#f0a24b;
+    --accent-dim:rgba(240,162,75,.14);
+    --ok:#5fbf8a;
+    --bad:#e2604f;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono","Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:
+      radial-gradient(1100px 600px at 78% -10%, #17202b 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, #1a1611 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);font:400 15px/1.55 var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  button,select,input{font:inherit;color:inherit}
+  button{background:none;border:none;cursor:pointer}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 24px 40px}
+
+  /* ---------- top bar ---------- */
+  .top{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+    padding-bottom:18px;border-bottom:1px solid var(--line)}
+  h1{font:600 17px/1.25 var(--sans);margin:0;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+  h1 span{font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+  .top-right{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+  .tabs{display:flex;padding:3px;background:#0d0f13;border:1px solid var(--line);border-radius:10px}
+  .tabs button{padding:7px 14px;border-radius:7px;font:500 12.5px/1 var(--mono);color:var(--dim);
+    letter-spacing:.04em;transition:.15s}
+  .tabs button.on{background:var(--panel-2);color:var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+  .tabs button:hover{color:var(--ink)}
+
+  select{
+    appearance:none;background:var(--panel) url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238d949f'/%3E%3C/svg%3E") no-repeat right 12px center;
+    border:1px solid var(--line);border-radius:10px;padding:9px 32px 9px 13px;
+    font:500 12.5px/1 var(--mono);color:var(--ink);cursor:pointer
+  }
+  select:hover{border-color:var(--line-2)}
+  select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:26px;align-items:start;padding-top:26px}
+
+  /* ---------- board ---------- */
+  .stage{min-width:0}
+  .board-shell{
+    background:linear-gradient(180deg,#101217,#0d0f13);
+    border:1px solid var(--line);border-radius:18px;padding:22px;
+    display:flex;justify-content:center;align-items:center;
+  }
+  .board{
+    display:grid;gap:6px;
+    grid-template-columns:repeat(var(--cols),minmax(0,1fr));
+    width:min(100%,calc(var(--cols) * 78px + (var(--cols) - 1) * 6px));
+  }
+  .cell{
+    aspect-ratio:1;min-width:0;border-radius:10px;
+    background:#1a1d24;display:flex;align-items:center;justify-content:center;
+    font:600 20px/1 var(--mono);color:#fff;position:relative;
+    transition:background-color .16s ease, box-shadow .16s ease;
+  }
+  .cell.empty::after{
+    content:'';width:5px;height:5px;border-radius:50%;background:#333945;
+    transition:background-color .2s;
+  }
+  .cell.head{z-index:2;box-shadow:inset 0 0 0 2px rgba(255,255,255,.92),0 0 18px -4px rgba(255,255,255,.28)}
+  .cell.target::before{
+    content:'';position:absolute;inset:7px;border-radius:50%;
+    border:2px dashed rgba(240,162,75,.85);animation:spinPulse 3.4s linear infinite;
+  }
+  .cell.denied{animation:deny .42s ease}
+  .cell.pop{animation:pop .2s ease}
+  @keyframes pop{0%{transform:scale(.82);opacity:.55}100%{transform:scale(1);opacity:1}}
+  @keyframes deny{0%,100%{box-shadow:inset 0 0 0 0 rgba(226,96,79,0)}40%{box-shadow:inset 0 0 0 3px var(--bad)}}
+  @keyframes spinPulse{0%,100%{opacity:.35}50%{opacity:.85}}
+
+  .board-meta{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:16px;font:500 12px/1.5 var(--mono);color:var(--dim)}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:middle}
+
+  .narration{
+    margin-top:16px;min-height:44px;display:flex;align-items:center;gap:10px;
+    padding:11px 14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    font:400 13.5px/1.45 var(--sans);color:#b9c0ca
+  }
+  .narration b{color:var(--ink);font-weight:600}
+  .narration .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+  .narration.goal{border-color:rgba(95,191,138,.45);background:rgba(95,191,138,.07)}
+  .narration.goal .dot{background:var(--ok)}
+  .narration.dead{border-color:rgba(226,96,79,.4);background:rgba(226,96,79,.06)}
+  .narration.dead .dot{background:var(--bad)}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font:500 12.5px/1 var(--mono);
+    color:#cfd4db;transition:.15s;letter-spacing:.02em
+  }
+  .btn:hover{background:var(--panel-2);border-color:var(--line-2);color:#fff}
+  .btn:disabled{opacity:.38;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#241505;font-weight:600}
+  .btn.primary:hover{background:#f5b167}
+  .btn .g{font-size:13px;line-height:1}
+  .speed{margin-left:auto;display:flex;align-items:center;gap:9px;font:500 11px/1 var(--mono);
+    color:var(--dimmer);letter-spacing:.1em;text-transform:uppercase}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:104px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,var(--line-2),#3b4250);outline-offset:8px
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:2px solid #0d0f13
+  }
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid #0d0f13;cursor:pointer}
+
+  /* ---------- side panels ---------- */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:14px}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .panel h2{font:600 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer);margin:0}
+  .panel .hint{font:400 10.5px/1 var(--mono);color:var(--dimmer)}
+
+  .seg{display:flex;gap:4px;padding:3px;background:#0d0f13;border:1px solid var(--line);border-radius:9px;margin-bottom:14px}
+  .seg button{flex:1;padding:8px;border-radius:6px;font:600 12px/1 var(--mono);letter-spacing:.1em;color:var(--dim);transition:.15s}
+  .seg button.on{background:var(--accent-dim);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(240,162,75,.35)}
+  .seg button:hover{color:var(--ink)}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stats>div{background:var(--panel);padding:11px 10px 9px;display:flex;flex-direction:column;gap:5px}
+  .stats b{font:600 18px/1 var(--mono);color:var(--ink);letter-spacing:-.02em}
+  .stats span{font:500 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer)}
+
+  .status{margin-top:12px;font:500 11.5px/1.5 var(--mono);color:var(--dim);display:flex;align-items:center;gap:8px}
+  .pill{padding:3px 8px;border-radius:999px;font:600 9.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+  .pill.idle{background:#20242c;color:var(--dim)}
+  .pill.run{background:var(--accent-dim);color:var(--accent)}
+  .pill.done{background:rgba(95,191,138,.13);color:var(--ok)}
+  .pill.fail{background:rgba(226,96,79,.12);color:var(--bad)}
+
+  /* ---------- frontier thumbs ---------- */
+  .thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .thumb{background:#0e1014;border:1px solid var(--line);border-radius:8px;padding:6px;
+    display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;transition:.18s}
+  .thumb.next{border-color:rgba(240,162,75,.55);background:rgba(240,162,75,.06)}
+  .thumb.next em{color:var(--accent)}
+  .thumb .mini{display:grid;gap:1.5px}
+  .thumb .mini i{width:7px;height:7px;border-radius:1.5px;background:#23272f;display:block}
+  .thumb em{font:500 8.5px/1 var(--mono);color:var(--dimmer);font-style:normal;letter-spacing:.04em}
+  .more{grid-column:span 4;text-align:center;font:500 10px/1 var(--mono);color:var(--dimmer);padding:6px 0 1px}
+  .empty-note{font:400 12px/1.5 var(--mono);color:var(--dimmer);padding:8px 2px;grid-column:span 4}
+
+  /* ---------- compare ---------- */
+  .cmp-row{display:grid;grid-template-columns:38px 1fr;gap:9px;align-items:center;padding:7px 0;border-radius:6px}
+  .cmp-row+.cmp-row{border-top:1px solid #1c2028}
+  .cmp-row.active .cmp-name{color:var(--accent)}
+  .cmp-name{font:600 10.5px/1 var(--mono);letter-spacing:.1em;color:var(--dim)}
+  .cmp-bar{height:4px;border-radius:2px;background:#23272f;overflow:hidden;margin-bottom:6px}
+  .cmp-bar span{display:block;height:100%;border-radius:2px;background:#3d4553;transition:width .4s}
+  .cmp-row.active .cmp-bar span{background:var(--accent)}
+  .cmp-txt{font:400 10.5px/1.4 var(--mono);color:var(--dim)}
+  .cmp-txt b{color:#cdd3db;font-weight:600}
+
+  /* ---------- manual pad ---------- */
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-areas:". up ." "left mid right" ". down .";
+    gap:7px;margin-bottom:12px}
+  .pad .move{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    height:62px;border-radius:10px;border:1px solid var(--line);background:#0e1014;
+    transition:.15s;font:500 9px/1.2 var(--mono);color:var(--dimmer);letter-spacing:.02em;padding:4px
+  }
+  .pad .move .ar{font:400 17px/1 var(--sans);color:var(--dim)}
+  .pad .move.ok{border-color:rgba(95,191,138,.35)}
+  .pad .move.ok .ar{color:var(--ok)}
+  .pad .move.ok:hover{background:rgba(95,191,138,.09);border-color:var(--ok)}
+  .pad .move.no{opacity:.55}
+  .pad .move.no .ar{color:#5a616b}
+  .pad .move.end{border-color:rgba(240,162,75,.4);background:rgba(240,162,75,.07)}
+  .pad .move.end .ar{color:var(--accent)}
+  .pad .move.end:hover{background:rgba(240,162,75,.14)}
+  .pad .move[data-dir=up]{grid-area:up}
+  .pad .move[data-dir=down]{grid-area:down}
+  .pad .move[data-dir=left]{grid-area:left}
+  .pad .move[data-dir=right]{grid-area:right}
+  .pad .mid{grid-area:mid;display:grid;place-items:center;border:1px dashed var(--line);border-radius:10px;
+    font:500 9.5px/1.5 var(--mono);color:var(--dimmer);text-align:center;padding:4px}
+
+  .rules{font:400 11.5px/1.65 var(--mono);color:var(--dim);margin:0;padding:0;list-style:none}
+  .rules li{padding-left:16px;position:relative}
+  .rules li::before{content:'›';position:absolute;left:3px;color:var(--accent)}
+  .rules code{color:#c3c9d2}
+
+  footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);
+    font:400 11px/1.7 var(--mono);color:var(--dimmer);display:flex;flex-wrap:wrap;gap:8px 22px;justify-content:space-between}
+  kbd{font:500 10px/1 var(--mono);background:#1b1f27;border:1px solid var(--line-2);
+    border-bottom-width:2px;border-radius:4px;padding:3px 5px;color:#b9c0ca}
+
+  .hidden{display:none !important}
+
+  @media (max-width:1020px){
+    .grid{grid-template-columns:minmax(0,1fr)}
+    .panel-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+    .panel{margin-bottom:0}
+    .panel-col .panel:last-child{grid-column:1/-1}
+  }
+  @media (max-width:640px){
+    .wrap{padding:16px 14px 30px}
+    .panel-col{grid-template-columns:1fr}
+    .board-shell{padding:12px}
+    .board{gap:5px;grid-template-columns:repeat(var(--cols),minmax(0,1fr))}
+    .cell{font-size:17px;border-radius:8px}
+    .thumbs{grid-template-columns:repeat(3,1fr)}
+    .more{grid-column:span 3}
+    .speed{margin-left:0}
+  }
+  @media (max-width:560px){
+    .top{flex-direction:column;align-items:stretch;gap:12px}
+    .top-right{width:100%;justify-content:space-between;flex-wrap:nowrap}
+    .tabs{flex:0 0 auto}
+    #puzzleSel{flex:1 1 auto;min-width:0}
+    .controls{gap:6px}
+    .btn{padding:9px 12px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1>NumberLink <span>algorithm visualizer</span></h1>
+    <div class="top-right">
+      <div class="tabs" role="tablist">
+        <button id="tabSolve" class="on" role="tab" aria-selected="true">Search</button>
+        <button id="tabExplore" role="tab" aria-selected="false">Manual</button>
+      </div>
+      <select id="puzzleSel" aria-label="Puzzle"></select>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- ============ stage ============ -->
+    <section class="stage">
+      <div class="board-shell">
+        <div class="board" id="board" role="img" aria-label="Puzzle board"></div>
+      </div>
+
+      <div class="board-meta">
+        <div class="legend" id="legend"></div>
+        <div id="boardInfo" style="margin-left:auto"></div>
+      </div>
+
+      <div class="narration" id="narration" aria-live="polite">
+        <span class="dot"></span><span id="narrationText">ready — press Play or Step</span>
+      </div>
+
+      <div class="controls" id="searchControls">
+        <button class="btn primary" id="btnPlay"><span class="g">▶</span><span id="playLabel">Play</span></button>
+        <button class="btn" id="btnStep">Step</button>
+        <button class="btn" id="btnFinish">Finish</button>
+        <button class="btn" id="btnReset">Reset</button>
+        <label class="speed">speed
+          <input type="range" id="speed" min="0" max="7" value="4" aria-label="Playback speed">
+        </label>
+      </div>
+
+      <div class="controls hidden" id="manualControls">
+        <button class="btn" id="btnUndo">Undo</button>
+        <button class="btn" id="btnResetManual">Reset</button>
+        <span class="speed" style="text-transform:none;letter-spacing:0;color:var(--dimmer)">
+          click a move, or use <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd>
+        </span>
+      </div>
+    </section>
+
+    <!-- ============ side ============ -->
+    <aside class="panel-col">
+
+      <div class="panel" id="panelSearch">
+        <div class="seg" id="modeSeg">
+          <button data-mode="bfs" class="on">BFS</button>
+          <button data-mode="dfs">DFS</button>
+        </div>
+        <div class="stats">
+          <div><b id="stExpanded">0</b><span>expanded</span></div>
+          <div><b id="stDiscovered">1</b><span>discovered</span></div>
+          <div><b id="stFrontier">1</b><span>frontier</span></div>
+          <div><b id="stMax">1</b><span>max frontier</span></div>
+          <div><b id="stDepth">0</b><span>depth</span></div>
+          <div><b id="stPair">1 / 5</b><span>pair</span></div>
+        </div>
+        <div class="status"><span class="pill idle" id="statusPill">ready</span><span id="statusText">state 1 of 1 discovered</span></div>
+      </div>
+
+      <div class="panel hidden" id="panelManual">
+        <div class="panel-head"><h2>Legal moves</h2><span class="hint" id="manualPair">pair 1</span></div>
+        <div class="pad" id="pad">
+          <button class="move" data-dir="up"><span class="ar">↑</span><span class="lbl">up</span></button>
+          <button class="move" data-dir="left"><span class="ar">←</span><span class="lbl">left</span></button>
+          <div class="mid" id="padMid">head<br>0,0</div>
+          <button class="move" data-dir="right"><span class="ar">→</span><span class="lbl">right</span></button>
+          <button class="move" data-dir="down"><span class="ar">↓</span><span class="lbl">down</span></button>
+        </div>
+        <ul class="rules">
+          <li>A cell is enterable if it is <code>empty</code></li>
+          <li>…or if it is this pair's <code>end</code> cell</li>
+          <li>Anything already painted is <code>blocked</code></li>
+        </ul>
+      </div>
+
+      <div class="panel" id="panelFrontier">
+        <div class="panel-head"><h2>Frontier</h2><span class="hint" id="frontierHint">queue front</span></div>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+
+      <div class="panel" id="panelCompare">
+        <div class="panel-head"><h2>Head to head</h2><span class="hint">whole search</span></div>
+        <div id="compare"></div>
+      </div>
+
+      <div class="panel" id="panelSolution" style="display:none">
+        <div class="panel-head"><h2>Solution</h2><span class="hint" id="solHint"></span></div>
+        <div id="solMoves" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px"></div>
+        <button class="btn" id="btnReplay" style="width:100%;justify-content:center">
+          <span class="g">↺</span><span>Replay the path</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>State model mirrors <b>NumberLink.java</b> — children pushed down / right / up / left, goal tested when a state leaves the frontier, visited checked on push.</span>
+    <span><kbd>space</kbd> play · <kbd>→</kbd> step · <kbd>R</kbd> reset</span>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   1. Puzzles
+   ===================================================================== */
+const PUZZLES = [
+  {
+    id: 'sample',
+    name: 'Sample 5×5 · 5 pairs',
+    grid: [[1,0,0,2,0],[0,3,0,4,0],[0,0,0,0,0],[0,0,4,0,2],[3,1,5,0,5]],
+    note: 'the board from NumberLink.java'
+  },
+  {
+    id: 'medium',
+    name: 'Tight 5×5 · 4 pairs',
+    grid: [[2,0,3,0,0],[1,0,0,0,4],[0,0,0,0,3],[0,0,0,4,0],[1,2,0,0,0]],
+    note: 'two ways round every corner'
+  },
+  {
+    id: 'open',
+    name: 'Open 5×5 · 3 pairs',
+    grid: [[0,3,2,0,0],[0,0,0,0,0],[1,0,0,0,0],[0,3,1,0,0],[0,0,0,0,2]],
+    note: 'lots of room, wide frontier'
+  }
+];
+
+const PAIR_COLORS = ['', '#dd5c4a', '#2f9e9b', '#cf9a3c', '#6d7ce0', '#a86bc4', '#4fa36a'];
+const DIRS = { up:[-1,0], down:[1,0], left:[0,-1], right:[0,1] };
+const SPEEDS = [750, 460, 280, 170, 100, 52, 22, 6];
+
+/* =====================================================================
+   2. Search core — the same algorithm as NumberLink.java
+   ===================================================================== */
+function parsePuzzle(grid) {
+  const rows = grid.length, cols = grid[0].length;
+  let pairs = 0;
+  for (const row of grid) for (const v of row) if (v > pairs) pairs = v;
+
+  const sr = [], sc = [], er = [], ec = [], seen = [];
+  for (let k = 0; k <= pairs; k++) { sr[k] = sc[k] = er[k] = ec[k] = seen[k] = 0; }
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const k = grid[i][j];
+      if (!k) continue;
+      if (seen[k] === 0) { sr[k] = i; sc[k] = j; } else { er[k] = i; ec[k] = j; }
+      seen[k]++;
+    }
+  }
+  for (let k = 1; k <= pairs; k++) {
+    if (seen[k] !== 2) throw new Error('pair ' + k + ' must appear exactly twice');
+  }
+  return { rows, cols, pairs, sr, sc, er, ec };
+}
+
+const stateKey = s => s.b.join('') + '|' + s.cur + '|' + s.hr + ',' + s.hc;
+
+class Solver {
+  constructor(grid, mode) {
+    this.mode = mode === 'dfs' ? 'dfs' : 'bfs';
+    Object.assign(this, parsePuzzle(grid));
+    this.gridFlat = grid.flat();
+
+    const b = Int8Array.from(this.gridFlat);
+    this.start = { b, cur: 1, hr: this.sr[1], hc: this.sc[1], g: 0, parent: null };
+
+    this.frontier = [this.start];   // BFS: array + read pointer · DFS: array as stack
+    this.readIx = 0;
+    this.visited = new Set([stateKey(this.start)]);
+
+    this.expanded = 0;
+    this.maxFrontier = 1;
+    this.current = this.start;
+    this.goal = null;
+    this.solution = null;
+    this.done = false;
+    this.exhausted = false;
+  }
+
+  get frontierSize() {
+    return this.mode === 'bfs' ? this.frontier.length - this.readIx : this.frontier.length;
+  }
+
+  pop() {
+    return this.mode === 'bfs' ? this.frontier[this.readIx++] : this.frontier.pop();
+  }
+
+  /* successor function — order matches NumberLink.getNextStates() */
+  children(s) {
+    const out = [];
+    if (s.cur > this.pairs) return out;
+    const cur = s.cur;
+    for (const [dr, dc] of [[1,0],[0,1],[-1,0],[0,-1]]) {
+      const nr = s.hr + dr, nc = s.hc + dc;
+      if (nr < 0 || nr >= this.rows || nc < 0 || nc >= this.cols) continue;
+
+      if (nr === this.er[cur] && nc === this.ec[cur]) {
+        /* reached this pair's end cell → close the pair, jump the head to the next start */
+        if (cur + 1 <= this.pairs) out.push({ b: s.b, cur: cur + 1, hr: this.sr[cur+1], hc: this.sc[cur+1], g: s.g + 1, parent: s });
+        else out.push({ b: s.b, cur: cur + 1, hr: s.hr, hc: s.hc, g: s.g + 1, parent: s });
+      } else {
+        const idx = nr * this.cols + nc;
+        if (s.b[idx] !== 0) continue;              /* blocked */
+        const nb = s.b.slice();
+        nb[idx] = cur;
+        out.push({ b: nb, cur, hr: nr, hc: nc, g: s.g + 1, parent: s });
+      }
+    }
+    return out;
+  }
+
+  isGoal(s) { return s.cur > this.pairs && !s.b.includes(0); }
+
+  step() {
+    if (this.done) return { type: 'idle' };
+    if (this.frontierSize === 0) {
+      this.done = true; this.exhausted = true;
+      return { type: 'exhausted' };
+    }
+    const s = this.pop();
+    this.current = s;
+    this.expanded++;
+
+    if (this.isGoal(s)) {
+      this.goal = s;
+      this.solution = this.buildSolution(s);
+      this.done = true;
+      return { type: 'goal', state: s };
+    }
+    for (const c of this.children(s)) {
+      const k = stateKey(c);
+      if (!this.visited.has(k)) { this.visited.add(k); this.frontier.push(c); }
+    }
+    this.maxFrontier = Math.max(this.maxFrontier, this.frontierSize);
+    return { type: 'expand', state: s };
+  }
+
+  buildSolution(goal) {
+    const path = [];
+    for (let s = goal; s; s = s.parent) path.push(s);
+    return path.reverse();
+  }
+
+  run() {
+    let guard = 0;
+    while (!this.done && guard++ < 2e6) this.step();
+    return this;
+  }
+}
+
+/* =====================================================================
+   3. UI state
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const els = {
+  board: $('board'), legend: $('legend'), info: $('boardInfo'),
+  narration: $('narration'), narrationText: $('narrationText'),
+  play: $('btnPlay'), playLabel: $('playLabel'), step: $('btnStep'),
+  finish: $('btnFinish'), reset: $('btnReset'), speed: $('speed'),
+  searchControls: $('searchControls'), manualControls: $('manualControls'),
+  panelSearch: $('panelSearch'), panelManual: $('panelManual'),
+  panelFrontier: $('panelFrontier'), panelCompare: $('panelCompare'),
+  panelSolution: $('panelSolution'), solMoves: $('solMoves'), solHint: $('solHint'),
+  thumbs: $('thumbs'), frontierHint: $('frontierHint'), compare: $('compare'),
+  pad: $('pad'), padMid: $('padMid'), manualPair: $('manualPair'),
+  puzzleSel: $('puzzleSel'),
+  stExpanded: $('stExpanded'), stDiscovered: $('stDiscovered'), stFrontier: $('stFrontier'),
+  stMax: $('stMax'), stDepth: $('stDepth'), stPair: $('stPair'),
+  statusPill: $('statusPill'), statusText: $('statusText'),
+  tabSolve: $('tabSolve'), tabExplore: $('tabExplore')
+};
+
+let puzzle = PUZZLES[0];
+let P = null;
+let cells = [];
+let prevBoard = null;
+
+let tab = 'solve';
+let mode = 'bfs';
+let solver = null;
+let playing = false;
+let playTimer = null;
+let replayTimer = null;
+let replayIx = -1;
+let manual = null;
+let compareCache = {};
+let lastThumbAt = 0;
+
+/* =====================================================================
+   4. Board rendering
+   ===================================================================== */
+function buildBoard() {
+  P = parsePuzzle(puzzle.grid);
+  els.board.style.setProperty('--cols', P.cols);
+  els.board.innerHTML = '';
+  cells = [];
+  const flat = puzzle.grid.flat();
+  for (let i = 0; i < flat.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.dataset.i = i;
+    if (flat[i]) { d.textContent = flat[i]; d.classList.add('endpoint'); }
+    els.board.appendChild(d);
+    cells.push(d);
+  }
+  prevBoard = null;
+  renderLegend();
+  els.info.textContent = P.rows + '×' + P.cols + ' · ' + P.pairs + ' pairs · ' + (P.rows * P.cols) + ' cells';
+}
+
+function renderLegend() {
+  let h = '';
+  for (let k = 1; k <= P.pairs; k++) {
+    h += '<span><i style="background:' + PAIR_COLORS[k] + '"></i>pair ' + k + '</span>';
+  }
+  els.legend.innerHTML = h;
+}
+
+function renderBoard(st) {
+  if (!st) return;
+  const targetIdx = st.cur <= P.pairs ? P.er[st.cur] * P.cols + P.ec[st.cur] : -1;
+  const headIdx   = st.cur <= P.pairs ? st.hr * P.cols + st.hc : -1;
+  const flat = puzzle.grid.flat();
+
+  for (let i = 0; i < cells.length; i++) {
+    const el = cells[i];
+    const v = st.b[i];
+
+    el.classList.toggle('empty', v === 0);
+    el.classList.toggle('head', i === headIdx);
+    el.classList.toggle('target', i === targetIdx && i !== headIdx);
+
+    if (v) {
+      if (el.style.backgroundColor !== PAIR_COLORS[v]) el.style.backgroundColor = PAIR_COLORS[v];
+    } else if (el.style.backgroundColor) {
+      el.style.backgroundColor = '';
+    }
+
+    const label = flat[i] ? String(flat[i]) : '';
+    if (el.textContent !== label) el.textContent = label;
+
+    if (prevBoard && v !== 0 && prevBoard[i] === 0) {
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
+  }
+  prevBoard = st.b.slice();
+}
+
+/* =====================================================================
+   5. Search tab
+   ===================================================================== */
+function newSolver() {
+  stopPlay();
+  stopReplay();
+  els.panelSolution.style.display = 'none';
+  solver = new Solver(puzzle.grid, mode);
+  renderAll();
+}
+
+function renderAll() {
+  renderBoard(solver.current);
+  renderStats();
+  renderThumbs(true);
+  renderCompare();
+  renderNarration(null);
+}
+
+function renderStats() {
+  els.stExpanded.textContent = solver.expanded;
+  els.stDiscovered.textContent = solver.visited.size;
+  els.stFrontier.textContent = solver.frontierSize;
+  els.stMax.textContent = solver.maxFrontier;
+  els.stDepth.textContent = solver.current.g;
+  els.stPair.textContent = Math.min(solver.current.cur, solver.pairs) + ' / ' + solver.pairs;
+}
+
+const nf = n => n.toLocaleString('en-US');
+
+function renderNarration(r) {
+  const el = els.narration;
+  el.classList.remove('goal', 'dead');
+  let html;
+
+  if (!r) {
+    html = '<b>' + mode.toUpperCase() + '</b> on ' + puzzle.name.toLowerCase() +
+           ' — ' + solver.visited.size + ' state discovered, frontier holds ' + solver.frontierSize + '.';
+    setStatus('idle', 'ready');
+  } else if (r.type === 'goal') {
+    el.classList.add('goal');
+    html = '<b>Goal.</b> Goal found after <b>' + nf(solver.expanded) + '</b> expansions — solution has <b>' +
+           (solver.solution.length - 1) + '</b> moves.';
+    setStatus('done', 'solved');
+    showSolution();
+  } else if (r.type === 'exhausted') {
+    el.classList.add('dead');
+    html = '<b>Exhausted.</b> Frontier empty after <b>' + nf(solver.expanded) + '</b> expansions — this board has no solution.';
+    setStatus('fail', 'dead end');
+  } else {
+    const s = solver.current;
+    const pair = Math.min(s.cur, solver.pairs);
+    let what;
+    if (s.cur > solver.pairs) what = 'all pairs closed, board not full yet';
+    else if (s.hr === P.sr[s.cur] && s.hc === P.sc[s.cur]) what = 'pair ' + pair + ' starts, head on its first cell';
+    else what = 'drawing pair ' + pair + ' to (' + P.er[s.cur] + ',' + P.ec[s.cur] + ')';
+    html = 'expand <b>#' + nf(solver.expanded) + '</b> · depth <b>' + s.g + '</b> · head (' +
+           s.hr + ',' + s.hc + ') · ' + what;
+    setStatus(playing ? 'run' : 'idle', playing ? 'running' : (solver.done ? 'done' : 'paused'));
+  }
+  els.narrationText.innerHTML = html;
+}
+
+function setStatus(kind, text) {
+  els.statusPill.className = 'pill ' + kind;
+  els.statusPill.textContent = text;
+  els.statusText.textContent = kind === 'fail'
+    ? 'no solution reachable'
+    : nf(solver.visited.size) + ' discovered · ' + nf(solver.expanded) + ' expanded';
+}
+
+function renderThumbs(force) {
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  if (!force && now - lastThumbAt < 70) return;
+  lastThumbAt = now;
+  const MAX = 12;
+  const items = [];
+  if (solver.frontierSize === 0) {
+    els.thumbs.innerHTML = '<div class="empty-note">frontier empty</div>';
+    els.frontierHint.textContent = mode === 'bfs' ? 'queue empty' : 'stack empty';
+    return;
+  }
+  if (mode === 'bfs') {
+    for (let i = solver.readIx; i < solver.frontier.length && items.length < MAX; i++) {
+      items.push({ st: solver.frontier[i], next: i === solver.readIx });
+    }
+    els.frontierHint.textContent = 'queue front';
+  } else {
+    for (let i = solver.frontier.length - 1; i >= 0 && items.length < MAX; i--) {
+      items.push({ st: solver.frontier[i], next: i === solver.frontier.length - 1 });
+    }
+    els.frontierHint.textContent = 'stack top';
+  }
+
+  let html = '';
+  for (const it of items) {
+    html += '<div class="thumb' + (it.next ? ' next' : '') + '">';
+    html += '<div class="mini" style="grid-template-columns:repeat(' + P.cols + ',7px)">';
+    for (let i = 0; i < it.st.b.length; i++) {
+      const v = it.st.b[i];
+      html += v ? '<i style="background:' + PAIR_COLORS[v] + '"></i>' : '<i></i>';
+    }
+    html += '</div><em>g' + it.st.g + '</em></div>';
+  }
+  const rest = solver.frontierSize - items.length;
+  if (rest > 0) html += '<div class="more">+ ' + nf(rest) + ' more ' + (mode === 'bfs' ? 'waiting' : 'under the top') + '</div>';
+  els.thumbs.innerHTML = html;
+}
+
+/* run the opposite mode once per puzzle to fill the comparison panel */
+function compareFor(id) {
+  if (compareCache[id]) return compareCache[id];
+  const grid = PUZZLES.find(p => p.id === id).grid;
+  const out = {};
+  for (const m of ['bfs', 'dfs']) {
+    const s = new Solver(grid, m).run();
+    out[m] = {
+      expanded: s.expanded, discovered: s.visited.size,
+      maxFrontier: s.maxFrontier, moves: s.solution ? s.solution.length - 1 : null
+    };
+  }
+  compareCache[id] = out;
+  return out;
+}
+
+function renderCompare() {
+  const data = compareFor(puzzle.id);
+  const best = Math.max(data.bfs.expanded, data.dfs.expanded, 1);
+  let html = '';
+  for (const m of ['bfs', 'dfs']) {
+    const d = data[m];
+    const pct = Math.max(3, Math.round(d.expanded / best * 100));
+    html += '<div class="cmp-row' + (m === mode ? ' active' : '') + '">' +
+      '<div class="cmp-name">' + m.toUpperCase() + '</div>' +
+      '<div><div class="cmp-bar"><span style="width:' + pct + '%"></span></div>' +
+      '<div class="cmp-txt"><b>' + nf(d.expanded) + '</b> expanded · max frontier <b>' + nf(d.maxFrontier) +
+      '</b> · ' + (d.moves === null ? 'no solution' : '<b>' + d.moves + '</b> moves') + '</div></div></div>';
+  }
+  els.compare.innerHTML = html;
+}
+
+function showSolution() {
+  const path = solver.solution;
+  els.panelSolution.style.display = '';
+  els.solHint.textContent = (path.length - 1) + ' moves';
+  let html = '';
+  for (let i = 1; i < path.length; i++) {
+    html += '<span style="font:600 10px/1 var(--mono);padding:5px 6px;border-radius:4px;background:#1c2028;color:#b9c0ca">' +
+      moveName(path[i - 1], path[i]) + '</span>';
+  }
+  els.solMoves.innerHTML = html;
+}
+
+function moveName(a, b) {
+  if (b.cur > a.cur) return '✦';
+  if (b.hr < a.hr) return '↑';
+  if (b.hr > a.hr) return '↓';
+  if (b.hc < a.hc) return '←';
+  if (b.hc > a.hc) return '→';
+  return '·';
+}
+
+/* ---- playback ---- */
+function stopPlay() {
+  playing = false;
+  if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+  els.playLabel.textContent = 'Play';
+  els.play.querySelector('.g').textContent = '▶';
+}
+
+function play() {
+  if (solver.done) return;
+  stopReplay();
+  playing = true;
+  els.playLabel.textContent = 'Pause';
+  els.play.querySelector('.g').textContent = '❚❚';
+  tick();
+}
+
+function tick() {
+  if (!playing) return;
+  const r = solver.step();
+  renderBoard(solver.current);
+  renderStats();
+  renderThumbs();
+  renderNarration(r);
+  if (r.type === 'goal' || r.type === 'exhausted') {
+    stopPlay();
+    renderThumbs(true);
+    return;
+  }
+  playTimer = setTimeout(tick, SPEEDS[+els.speed.value]);
+}
+
+function stepOnce() {
+  if (solver.done) {
+    stopPlay();
+    els.narrationText.innerHTML = solver.goal
+      ? '<b>Run finished.</b> Press Reset to search again, or Replay the path below.'
+      : '<b>Run finished.</b> The frontier is empty — press Reset to try another mode or board.';
+    return;
+  }
+  stopReplay();
+  const r = solver.step();
+  renderBoard(solver.current);
+  renderStats();
+  renderThumbs(true);
+  renderNarration(r);
+  if (r.type === 'goal' || r.type === 'exhausted') stopPlay();
+}
+
+function finishRun() {
+  stopPlay();
+  stopReplay();
+  solver.run();
+  renderBoard(solver.current);
+  renderStats();
+  renderThumbs(true);
+  renderNarration({ type: solver.goal ? 'goal' : 'exhausted' });
+}
+
+/* ---- solution replay ---- */
+function startReplay() {
+  if (!solver.solution) return;
+  stopPlay();
+  stopReplay();
+  replayIx = 0;
+  const path = solver.solution;
+
+  const tickReplay = () => {
+    if (replayIx >= path.length) { stopReplay(); renderBoard(path[path.length - 1]); return; }
+    const st = path[replayIx];
+    renderBoard(st);
+    const verb = replayIx === 0 ? 'start state' : 'move ' + replayIx + ' — pair ' + Math.min(st.cur, P.pairs);
+    els.narrationText.innerHTML = '<b>Replay</b> ' + verb + ' · head (' + st.hr + ',' + st.hc + ')';
+    els.stDepth.textContent = st.g;
+    els.stPair.textContent = Math.min(st.cur, P.pairs) + ' / ' + P.pairs;
+    replayIx++;
+    replayTimer = setTimeout(tickReplay, 90);
+  };
+  tickReplay();
+}
+
+function stopReplay() {
+  if (replayTimer) { clearTimeout(replayTimer); replayTimer = null; }
+  replayIx = -1;
+}
+
+/* =====================================================================
+   6. Manual exploration tab
+   ===================================================================== */
+function newManual() {
+  const b = Int8Array.from(puzzle.grid.flat());
+  manual = { b, cur: 1, hr: P.sr[1], hc: P.sc[1], g: 0, history: [] };
+  renderManual();
+}
+
+function manualState() { return manual; }
+
+function probe(dr, dc) {
+  if (manual.cur > P.pairs) return { kind: 'none', text: 'all pairs done' };
+  const r = manual.hr + dr, c = manual.hc + dc;
+  if (r < 0 || r >= P.rows || c < 0 || c >= P.cols) return { kind: 'no', text: 'edge', idx: -1 };
+  if (r === P.er[manual.cur] && c === P.ec[manual.cur]) return { kind: 'end', text: 'close', idx: r * P.cols + c };
+  const v = manual.b[r * P.cols + c];
+  if (v) return { kind: 'no', text: 'pair ' + v, idx: r * P.cols + c };
+  return { kind: 'ok', text: 'free', idx: r * P.cols + c };
+}
+
+function doMove(dir) {
+  const [dr, dc] = DIRS[dir];
+  const p = probe(dr, dc);
+  if (p.kind === 'no' || p.kind === 'none') {
+    if (p.idx >= 0) {
+      cells[p.idx].classList.remove('denied');
+      void cells[p.idx].offsetWidth;
+      cells[p.idx].classList.add('denied');
+    }
+    const why = p.kind === 'none'
+      ? 'every pair is already connected'
+      : p.text === 'edge' ? 'that is the edge of the board'
+      : 'blocked — that cell already belongs to ' + p.text;
+    narrateManual('<b>Illegal move.</b> ' + why + '.');
+    return;
+  }
+  manual.history.push({ b: manual.b.slice(), cur: manual.cur, hr: manual.hr, hc: manual.hc, g: manual.g });
+  manual.g++;
+
+  if (p.kind === 'end') {
+    const closed = manual.cur;
+    manual.cur++;
+    if (manual.cur <= P.pairs) { manual.hr = P.sr[manual.cur]; manual.hc = P.sc[manual.cur]; }
+    narrateManual('<b>Pair ' + closed + ' connected.</b> ' +
+      (manual.cur <= P.pairs ? 'Head jumps to pair ' + manual.cur + ' at (' + manual.hr + ',' + manual.hc + ').'
+                             : 'All pairs are closed — ' + (manual.b.includes(0) ? 'but cells are still empty.' : 'and every cell is used.')));
+  } else {
+    manual.b[(manual.hr + dr) * P.cols + (manual.hc + dc)] = manual.cur;
+    manual.hr += dr;
+    manual.hc += dc;
+    narrateManual('Moved ' + dir + ' to (' + manual.hr + ',' + manual.hc + ') — painted with pair ' + manual.cur + '.');
+  }
+  renderManual();
+}
+
+function narrateManual(html) {
+  els.narration.classList.remove('goal', 'dead');
+  if (manual.cur > P.pairs && !manual.b.includes(0)) els.narration.classList.add('goal');
+  els.narrationText.innerHTML = html;
+}
+
+function renderManual() {
+  renderBoard(manualState());
+
+  const done = manual.cur > P.pairs && !manual.b.includes(0);
+  els.manualPair.textContent = done ? 'solved' : 'pair ' + manual.cur + ' of ' + P.pairs;
+  els.padMid.innerHTML = done ? 'solved<br>in ' + manual.g : 'head<br>' + manual.hr + ',' + manual.hc;
+
+  const map = { up: 'up', down: 'down', left: 'left', right: 'right' };
+  for (const dir of Object.keys(map)) {
+    const btn = els.pad.querySelector('[data-dir="' + dir + '"]');
+    const p = probe(...DIRS[dir]);
+    btn.className = 'move ' + (p.kind === 'ok' ? 'ok' : p.kind === 'end' ? 'end' : 'no');
+    btn.querySelector('.lbl').textContent = p.text;
+    btn.setAttribute('aria-label', dir + ': ' + p.text);
+  }
+  if (done) {
+    els.narration.classList.add('goal');
+    els.narrationText.innerHTML = '<b>Solved</b> in ' + manual.g + ' moves — every pair connected, every cell used.';
+  }
+  els.stDepth.textContent = manual.g;
+  els.stPair.textContent = Math.min(manual.cur, P.pairs) + ' / ' + P.pairs;
+  els.stExpanded.textContent = manual.g;
+  els.stDiscovered.textContent = manual.history.length + 1;
+  els.stFrontier.textContent = '–';
+  els.stMax.textContent = '–';
+  setStatus(done ? 'done' : 'idle', done ? 'solved' : 'manual');
+}
+
+/* =====================================================================
+   7. Wiring
+   ===================================================================== */
+function switchTab(next) {
+  tab = next;
+  const explore = next === 'explore';
+  els.tabSolve.classList.toggle('on', !explore);
+  els.tabExplore.classList.toggle('on', explore);
+  els.tabSolve.setAttribute('aria-selected', String(!explore));
+  els.tabExplore.setAttribute('aria-selected', String(explore));
+
+  els.searchControls.classList.toggle('hidden', explore);
+  els.manualControls.classList.toggle('hidden', !explore);
+  els.panelSearch.classList.toggle('hidden', explore);
+  els.panelManual.classList.toggle('hidden', !explore);
+  els.panelFrontier.classList.toggle('hidden', explore);
+  els.panelCompare.classList.toggle('hidden', explore);
+  els.panelSolution.classList.toggle('hidden', explore);
+
+  stopPlay();
+  stopReplay();
+  if (explore) newManual(); else renderAll();
+}
+
+function selectPuzzle(id) {
+  puzzle = PUZZLES.find(p => p.id === id) || PUZZLES[0];
+  buildBoard();
+  stopPlay();
+  stopReplay();
+  solver = new Solver(puzzle.grid, mode);      /* always rebind: the solver owns a specific board */
+  if (tab === 'explore') newManual();
+  else renderAll();
+}
+
+/* tabs */
+els.tabSolve.addEventListener('click', () => switchTab('solve'));
+els.tabExplore.addEventListener('click', () => switchTab('explore'));
+
+/* puzzle picker */
+for (const p of PUZZLES) {
+  const o = document.createElement('option');
+  o.value = p.id;
+  o.textContent = p.name;
+  els.puzzleSel.appendChild(o);
+}
+els.puzzleSel.value = puzzle.id;
+els.puzzleSel.addEventListener('change', e => selectPuzzle(e.target.value));
+
+/* mode */
+$('modeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mode]');
+  if (!b) return;
+  mode = b.dataset.mode;
+  for (const x of $('modeSeg').children) x.classList.toggle('on', x === b);
+  newSolver();
+});
+
+/* search controls */
+els.play.addEventListener('click', () => {
+  if (playing) { stopPlay(); narratePaused(); return; }
+  if (solver.done) newSolver();
+  play();
+});
+els.step.addEventListener('click', () => { stopPlay(); stepOnce(); });
+els.finish.addEventListener('click', finishRun);
+els.reset.addEventListener('click', newSolver);
+els.speed.addEventListener('input', () => { /* picked up on next tick */ });
+
+$('btnUndo').addEventListener('click', () => {
+  if (!manual || !manual.history.length) return;
+  manual = manual.history.pop();
+  renderManual();
+});
+$('btnResetManual').addEventListener('click', newManual);
+
+els.pad.addEventListener('click', e => {
+  const b = e.target.closest('button[data-dir]');
+  if (b) doMove(b.dataset.dir);
+});
+
+/* hover hints on the board, manual tab only */
+els.board.addEventListener('pointerover', e => {
+  if (tab !== 'explore') return;
+  const c = e.target.closest('.cell');
+  if (!c) return;
+  const i = +c.dataset.i;
+  const r = Math.floor(i / P.cols), col = i % P.cols;
+  const v = manual.b[i];
+  const isEnd = manual.cur <= P.pairs && r === P.er[manual.cur] && col === P.ec[manual.cur];
+  const adj = Math.abs(r - manual.hr) + Math.abs(col - manual.hc) === 1;
+  let txt;
+  if (isEnd) txt = 'end cell of pair ' + manual.cur + ' — entering it closes the pair';
+  else if (v) txt = 'cell (' + r + ',' + col + ') is painted with pair ' + v + ' — never enterable';
+  else if (adj) txt = 'cell (' + r + ',' + col + ') is empty and adjacent — enterable';
+  else txt = 'cell (' + r + ',' + col + ') is empty, but not adjacent to the head';
+  els.narrationText.innerHTML = txt;
+});
+
+function narratePaused() {
+  els.narrationText.innerHTML = '<b>Paused</b> after ' + nf(solver.expanded) + ' expansions — frontier holds ' +
+    nf(solver.frontierSize) + ' states.';
+  setStatus('idle', 'paused');
+}
+
+/* keyboard */
+document.addEventListener('keydown', e => {
+  if (e.target.matches('select,input')) return;
+  if (tab === 'solve') {
+    if (e.code === 'Space') { e.preventDefault(); els.play.click(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); stopPlay(); stepOnce(); }
+    else if (e.key === 'r' || e.key === 'R') newSolver();
+  } else {
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    if (map[e.key]) { e.preventDefault(); doMove(map[e.key]); }
+    else if (e.key === 'r' || e.key === 'R') newManual();
+  }
+});
+
+/* solution replay */
+$('btnReplay').addEventListener('click', startReplay);
+
+/* =====================================================================
+   8. Boot
+   ===================================================================== */
+els.speed.value = 4;
+buildBoard();
+solver = new Solver(puzzle.grid, mode);
+switchTab('solve');
+</script>
+</body>
+</html>

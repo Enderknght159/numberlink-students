@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NumberLink — Code Walkthrough</title>
+<style>
+  :root{
+    --ink:#15171a;
+    --body:#2c3138;
+    --muted:#646b76;
+    --line:#e4e4e2;
+    --paper:#faf9f6;
+    --card:#ffffff;
+    --accent:#b8451a;
+    --accent-soft:#fbeee7;
+    --code-bg:#14161a;
+    --code-ink:#e8e7e3;
+    --p1:#c1382a;
+    --p2:#1f7573;
+    --p3:#a8730f;
+    --p4:#4a58ad;
+    --p5:#7c3f91;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono","Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--body);
+    font:400 17px/1.68 var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px;
+    display:grid;grid-template-columns:236px minmax(0,1fr);gap:56px;align-items:start}
+  /* ---------- sidebar ---------- */
+  nav{
+    position:sticky;top:0;padding:44px 0 40px;font-size:13.5px;
+    max-height:100vh;overflow:auto;
+  }
+  nav .brand{
+    font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:22px;
+  }
+  nav ol{list-style:none;margin:0;padding:0;counter-reset:toc}
+  nav li{counter-increment:toc;margin:0}
+  nav a{
+    display:flex;gap:10px;padding:5px 0 5px 0;color:var(--muted);text-decoration:none;
+    border-left:2px solid transparent;padding-left:12px;transition:color .15s,border-color .15s;
+  }
+  nav a::before{content:counter(toc,decimal-leading-zero);font-family:var(--mono);
+    font-size:11px;color:#a9adb4;padding-top:2px}
+  nav a:hover{color:var(--ink);border-left-color:var(--accent)}
+  /* ---------- content ---------- */
+  main{padding:44px 0 96px;min-width:0}
+  header.hero{border-bottom:1px solid var(--line);padding-bottom:34px;margin-bottom:44px}
+  .eyebrow{
+    font:600 11.5px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 16px
+  }
+  h1{
+    font:600 clamp(34px,4.6vw,52px)/1.08 var(--serif);color:var(--ink);
+    margin:0 0 14px;letter-spacing:-.015em
+  }
+  .lede{font-size:19px;line-height:1.6;color:#494f58;max-width:60ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{
+    font:500 12px/1 var(--mono);padding:7px 11px;border-radius:999px;
+    background:#fff;border:1px solid var(--line);color:var(--muted)
+  }
+  h2{
+    font:600 27px/1.25 var(--serif);color:var(--ink);margin:56px 0 6px;
+    letter-spacing:-.01em;scroll-margin-top:24px
+  }
+  h2 .num{font:600 12px/1 var(--mono);color:var(--accent);
+    display:block;letter-spacing:.14em;margin-bottom:10px}
+  h3{font:600 17px/1.4 var(--sans);color:var(--ink);margin:30px 0 8px}
+  p{margin:0 0 15px;max-width:68ch}
+  a{color:var(--accent)}
+  strong{color:var(--ink);font-weight:600}
+  code:not(pre code){
+    font:500 .875em/1.5 var(--mono);background:#efeeea;color:#31353b;
+    padding:1.5px 5px;border-radius:4px;white-space:nowrap
+  }
+  ul,ol{padding-left:20px;margin:0 0 16px;max-width:68ch}
+  li{margin:5px 0}
+  li::marker{color:#a9adb4}
+  /* ---------- callout ---------- */
+  .callout{
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:0 10px 10px 0;padding:18px 22px;margin:26px 0;font-size:16px
+  }
+  .callout p:last-child{margin-bottom:0}
+  .callout .ct{font:600 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);display:block;margin-bottom:9px}
+  /* ---------- code ---------- */
+  .snippet{margin:22px 0 26px;border-radius:11px;overflow:hidden;background:var(--code-bg);
+    box-shadow:0 1px 0 rgba(0,0,0,.1),0 8px 24px -18px rgba(0,0,0,.5)}
+  .snippet .bar{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:9px 15px;background:#1c1f25;border-bottom:1px solid #262a31;
+    font:500 11.5px/1 var(--mono);color:#9aa0aa;letter-spacing:.03em
+  }
+  .snippet .bar .lang{color:#d8a48c;letter-spacing:.1em;text-transform:uppercase;font-size:10.5px}
+  pre{margin:0;padding:16px 18px 18px;overflow-x:auto;
+    font:400 13.4px/1.68 var(--mono);color:var(--code-ink);tab-size:4}
+  .c{color:#7f8894;font-style:italic}
+  .k{color:#d99b6c}
+  .n{color:#d9b26a}
+  .f{color:#8fb6d8}
+  /* ---------- tables ---------- */
+  .tw{overflow-x:auto;margin:22px 0 28px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;font-size:14.5px}
+  th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font:600 11px/1.4 var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+    background:#f5f4f0;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  td code{font-size:.85em}
+  td.mono,th.mono{font-family:var(--mono);font-size:12.5px;color:var(--muted);white-space:nowrap}
+  /* ---------- board ---------- */
+  .boardwrap{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start;margin:26px 0 30px}
+  .board{display:grid;grid-template-columns:repeat(5,54px);gap:4px;
+    background:#e4e4e2;padding:4px;border-radius:11px;
+    box-shadow:0 12px 28px -22px rgba(0,0,0,.55)}
+  .cell{
+    height:54px;border-radius:7px;background:#fff;display:grid;place-items:center;
+    font:600 17px/1 var(--mono);color:#b9bcc1;position:relative
+  }
+  .cell.end{color:#fff}
+  .cell::after{content:attr(data-i);font:500 9px/1 var(--mono);color:#c8cbd0;
+    position:absolute;right:5px;bottom:4px;opacity:0}
+  .p1{background:var(--p1);color:#fff}
+  .p2{background:var(--p2);color:#fff}
+  .p3{background:var(--p3);color:#fff}
+  .p4{background:var(--p4);color:#fff}
+  .p5{background:var(--p5);color:#fff}
+  .legend{font-size:14px;color:var(--muted);max-width:34ch}
+  .legend dl{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;margin:0 0 14px}
+  .legend dt{display:flex;align-items:center;gap:7px;font:600 12.5px/1 var(--mono);color:var(--ink)}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .legend dd{margin:0;font-size:13.5px;line-height:1.5}
+  /* ---------- flow ---------- */
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin:24px 0 28px}
+  .step{
+    flex:1 1 150px;background:var(--card);border:1px solid var(--line);border-radius:9px;
+    padding:12px 14px;font-size:13.5px;line-height:1.45
+  }
+  .step b{display:block;font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:7px}
+  .step code{font-family:var(--mono);font-size:12.5px;background:none;padding:0;color:var(--ink)}
+  .arrow{align-self:center;color:#c3c6cb;font-size:18px;flex:0 0 auto}
+  /* ---------- moves grid ---------- */
+  .dirs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:22px 0 26px}
+  .dir{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:13px 15px;font-size:13.5px}
+  .dir b{font:600 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);
+    display:block;margin-bottom:7px}
+  .dir .guard{font:400 12.5px/1.55 var(--mono);color:var(--muted);display:block}
+  /* ---------- findings ---------- */
+  .find{display:grid;gap:14px;margin:24px 0 30px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .item h4{margin:0 0 6px;font:600 15.5px/1.35 var(--sans);color:var(--ink);
+    display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+  .item p{margin:0;font-size:15px;max-width:none}
+  .tag{font:600 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+    padding:5px 7px;border-radius:4px;white-space:nowrap}
+  .tag.bug{background:#fbe6e2;color:#a52f1c}
+  .tag.risk{background:#fdf0da;color:#8a5c08}
+  .tag.perf{background:#e7edf9;color:#3a4c94}
+  .tag.style{background:#edeeec;color:#5e646c}
+  /* ---------- compare ---------- */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 28px}
+  .two .snippet{margin:0}
+  .col-h{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 8px}
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line);margin-top:64px;padding-top:22px;
+    font-size:13.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between}
+  @media (max-width:900px){
+    .wrap{grid-template-columns:minmax(0,1fr);gap:0;padding:0 20px}
+    nav{position:static;max-height:none;padding:28px 0 0;border-bottom:1px solid var(--line);padding-bottom:18px}
+    nav ol{display:flex;flex-wrap:wrap;gap:4px 14px}
+    nav a{padding-left:0;border-left:0}
+    nav a::before{content:counter(toc,decimal-leading-zero) "  "}
+    main{padding-top:32px}
+    .two{grid-template-columns:1fr}
+    h2{margin-top:44px}
+  }
+  @media print{
+    body{background:#fff;font-size:11pt}
+    nav{display:none}
+    .wrap{display:block;padding:0}
+    .snippet{box-shadow:none;border:1px solid #ccc}
+    h2{page-break-after:avoid}
+    .item,.tw,.snippet,.flow{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav aria-label="Contents">
+  <div class="brand">NumberLink</div>
+  <ol>
+    <li><a href="#overview">Four files, one design</a></li>
+    <li><a href="#model">The board model</a></li>
+    <li><a href="#state">What a state holds</a></li>
+    <li><a href="#ctor">Constructor pipeline</a></li>
+    <li><a href="#moves">The move engine</a></li>
+    <li><a href="#goal">Goal test</a></li>
+    <li><a href="#eq">Equality &amp; hashing</a></li>
+    <li><a href="#search">The search (Java)</a></li>
+    <li><a href="#main">What each main does</a></li>
+    <li><a href="#findings">Findings</a></li>
+    <li><a href="#linemap">Line map</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero">
+  <p class="eyebrow">Code walkthrough · Numberlink puzzle</p>
+  <h1>One puzzle state, written four times</h1>
+  <p class="lede">
+    Python, C++, C# and Java versions of the same class: a single position in the
+    search tree for a Numberlink board. It is not a game UI and not a solver —
+    except the Java file, which adds DFS and BFS to actually finish the puzzle.
+  </p>
+  <div class="meta">
+    <span class="chip">4 implementations</span>
+    <span class="chip">5 × 5 sample board</span>
+    <span class="chip">state-space search</span>
+    <span class="chip">no build files</span>
+  </div>
+</header>
+
+<!-- 01 -->
+<h2 id="overview"><span class="num">01</span>Four files, one design</h2>
+<p>
+  All four files are the same object model translated literally: same fields, same
+  method names, same order of operations. Reading one teaches you the other three.
+  The only structural difference is where the actual solving lives.
+</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>File</th><th>Memory / identity model</th><th>Solver included</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>numberlink.py</code></td>
+      <td>plain objects, <code>__hash__</code>/<code>__eq__</code></td>
+      <td>no</td>
+      <td>Reference version, most detailed comments</td>
+    </tr>
+    <tr>
+      <td><code>NumberLink.cpp</code></td>
+      <td><code>shared_ptr</code> + <code>enable_shared_from_this</code></td>
+      <td>no</td>
+      <td><code>hashCode()</code>/<code>equals()</code> ready but not wired into <code>unordered_set</code></td>
+    </tr>
+    <tr>
+      <td><code>NumberLink.cs</code></td>
+      <td>class references, <code>Object.Equals</code>/<code>GetHashCode</code></td>
+      <td>no</td>
+      <td>PascalCase API, <code>int[,]</code> board</td>
+    </tr>
+    <tr>
+      <td><code>NumberLink.java</code></td>
+      <td>object references, <code>equals</code>/<code>hashCode</code></td>
+      <td><strong>yes</strong> — DFS and BFS</td>
+      <td>The only file that produces a solution</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="ct">The one idea to take away</span>
+  <p>
+    The board arrays do two jobs at once. They store the puzzle, and they store
+    which cells are already used. A path physically cannot cross itself or another
+    pair, because every drawn cell becomes non-zero — the rule is enforced by the
+    data structure, not by extra bookkeeping.
+  </p>
+</div>
+
+<!-- 02 -->
+<h2 id="model"><span class="num">02</span>The board model</h2>
+<p>
+  The board is a rectangular grid of integers. <code>0</code> is an empty cell,
+  <code>k</code> is a cell belonging to pair <em>k</em> — both the two printed
+  numbers and every cell of the path drawn between them.
+</p>
+
+<div class="boardwrap">
+  <div class="board" aria-label="Sample 5 by 5 Numberlink board">
+    <div class="cell p1 end">1</div><div class="cell">·</div><div class="cell">·</div><div class="cell p2 end">2</div><div class="cell">·</div>
+    <div class="cell">·</div><div class="cell p3 end">3</div><div class="cell">·</div><div class="cell p4 end">4</div><div class="cell">·</div>
+    <div class="cell">·</div><div class="cell">·</div><div class="cell">·</div><div class="cell">·</div><div class="cell">·</div>
+    <div class="cell">·</div><div class="cell">·</div><div class="cell p4 end">4</div><div class="cell">·</div><div class="cell p2 end">2</div>
+    <div class="cell p3 end">3</div><div class="cell p1 end">1</div><div class="cell p5 end">5</div><div class="cell">·</div><div class="cell p5 end">5</div>
+  </div>
+  <div class="legend">
+    <dl>
+      <dt><span class="sw p1"></span>pair 1</dt><dd>(0,0) → (4,1)</dd>
+      <dt><span class="sw p2"></span>pair 2</dt><dd>(0,3) → (3,4)</dd>
+      <dt><span class="sw p3"></span>pair 3</dt><dd>(1,1) → (4,0)</dd>
+      <dt><span class="sw p4"></span>pair 4</dt><dd>(1,3) → (3,2)</dd>
+      <dt><span class="sw p5"></span>pair 5</dt><dd>(4,2) → (4,4)</dd>
+    </dl>
+    <p style="margin:0">
+      The hard-coded board used by every <code>main</code>. Grid is 5 × 5 =
+      <strong>25</strong> cells, <strong>10</strong> of which are pre-printed
+      endpoints, so every complete solution fills <strong>15</strong> empty cells and
+      takes exactly <strong>20</strong> moves.
+    </p>
+  </div>
+</div>
+
+<p>
+  Pair <strong>5</strong> is nearly free: its cells sit two apart on the bottom row,
+  so it costs exactly two moves. Pairs <strong>1</strong> and <strong>3</strong> run
+  between mirrored corners, which is what makes this particular board take real
+  search time.
+</p>
+
+<!-- 03 -->
+<h2 id="state"><span class="num">03</span>What a state holds</h2>
+<p>
+  A state is <em>not</em> a solution. It is "the paths drawn so far, plus where the
+  pencil currently is". Solutions are built one cell at a time.
+</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>Field</th><th>Meaning</th><th>Changes per move?</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="mono">board</td><td>the grid; 0 = empty, k = pair k</td><td>yes — one cell painted</td></tr>
+    <tr><td class="mono">rows, cols</td><td>dimensions</td><td>never</td></tr>
+    <tr><td class="mono">startRow/startCol</td><td>first occurrence of each number</td><td>never — shared by all states</td></tr>
+    <tr><td class="mono">endRow/endCol</td><td>second occurrence of each number</td><td>never — shared by all states</td></tr>
+    <tr><td class="mono">pairsCount</td><td>largest number on the board</td><td>never</td></tr>
+    <tr><td class="mono">currentPair</td><td>which pair is being drawn (1…n, then n+1)</td><td>only when a pair closes</td></tr>
+    <tr><td class="mono">headrow, headcol</td><td>the moving tip of the current path</td><td>yes</td></tr>
+    <tr><td class="mono">g</td><td>depth = number of moves from the start state</td><td>yes, +1</td></tr>
+    <tr><td class="mono">parent</td><td>back-pointer used to reconstruct the path</td><td>yes</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  The endpoint arrays are indexed by pair number and <strong>index 0 is never
+  used</strong> — that keeps the code readable at the cost of one wasted slot. They
+  are computed once in the first constructor and then shared by reference with
+  every descendant state, which is the main memory optimisation in the design.
+</p>
+
+<!-- 04 -->
+<h2 id="ctor"><span class="num">04</span>Constructor pipeline</h2>
+
+<div class="flow">
+  <div class="step"><b>1 · copy</b>Clone the caller's grid so the class never aliases outside memory.</div>
+  <div class="arrow">→</div>
+  <div class="step"><b>2 · count</b>Scan for the maximum value — that is the pair count.</div>
+  <div class="arrow">→</div>
+  <div class="step"><b>3 · locate</b>First sighting of <code>k</code> = start, second = end.</div>
+  <div class="arrow">→</div>
+  <div class="step"><b>4 · validate</b>Every <code>k</code> in 1…n must appear exactly twice, else throw.</div>
+  <div class="arrow">→</div>
+  <div class="step"><b>5 · position</b><code>currentPair = 1</code>, head on pair 1's start cell.</div>
+</div>
+
+<p>
+  Step 1 matters: <code>[row[:] for row in start_board]</code> in Python,
+  <code>System.arraycopy</code> in Java, <code>Clone()</code> in C#, and plain
+  vector assignment in C++. Without it, painting a cell in a child state would
+  corrupt the puzzle definition.
+</p>
+
+<p>
+  Step 4 is what makes a malformed board fail loudly instead of silently producing
+  a search that can never succeed. It also rejects gaps in the numbering: a board
+  containing only pairs 1 and 3 throws, because pair 2 appears zero times.
+</p>
+
+<!-- 05 -->
+<h2 id="moves"><span class="num">05</span>The move engine</h2>
+<p>
+  Three private pieces cooperate, and everything public is built on top of them.
+</p>
+
+<h3>Admission: <code>canEnter</code></h3>
+<p>
+  A cell may be entered only if it is empty, <em>or</em> if it is the end cell of the
+  pair currently being drawn. Everything else — your own path, another pair's path,
+  another pair's number — is blocked.
+</p>
+
+<div class="snippet">
+  <div class="bar"><span>canEnter / _can_enter</span><span class="lang">python</span></div>
+<pre><span class="c"># numberlink.py:92 — yes if the cell is empty, or if it is the end of the current pair</span>
+<span class="k">def</span> <span class="f">_can_enter</span>(self, row, col):
+    <span class="k">if</span> row == self.end_row[self.current_pair] <span class="k">and</span> col == self.end_col[self.current_pair]:
+        <span class="k">return</span> <span class="k">True</span>
+    <span class="k">return</span> self.board[row][col] == <span class="n">0</span></pre>
+</div>
+
+<p>
+  Note the ordering: the endpoint check comes first. The end cell already holds a
+  non-zero number, so without that first branch no path could ever finish.
+</p>
+
+<h3>Transition: <code>stepTo</code></h3>
+<p>
+  This is the state machine. If the target is the current pair's end cell, the pair
+  closes: <code>currentPair</code> increments and the head jumps to the <em>next</em>
+  pair's start cell. Otherwise the cell is painted and the head moves there.
+</p>
+
+<div class="snippet">
+  <div class="bar"><span>stepTo / _step_to</span><span class="lang">python</span></div>
+<pre><span class="c"># numberlink.py:98 — put the head on (row, col); if it is the end, go to the next pair</span>
+<span class="k">def</span> <span class="f">_step_to</span>(self, row, col):
+    <span class="k">if</span> row == self.end_row[self.current_pair] <span class="k">and</span> col == self.end_col[self.current_pair]:
+        self.current_pair += <span class="n">1</span>
+        <span class="k">if</span> self.current_pair &lt;= self.pairs_count:
+            self.headrow = self.start_row[self.current_pair]
+            self.headcol = self.start_col[self.current_pair]
+    <span class="k">else</span>:
+        self.board[row][col] = self.current_pair
+        self.headrow = row
+        self.headcol = col</pre>
+</div>
+
+<p>
+  Two consequences fall out of this. The end cell is never re-painted, because it is
+  already marked. And when the final pair closes, <code>currentPair</code> becomes
+  <code>pairsCount + 1</code> — the sentinel that every guard checks against.
+</p>
+
+<h3>Generation: four directions, one pattern</h3>
+<p>
+  Each direction exists twice: a <code>canMove…</code> predicate and a
+  <code>move…</code> performer. The performer is always the same three lines:
+  copy, step, re-link.
+</p>
+
+<div class="dirs">
+  <div class="dir"><b>up</b><span class="guard">headrow != 0</span></div>
+  <div class="dir"><b>down</b><span class="guard">headrow != rows - 1</span></div>
+  <div class="dir"><b>left</b><span class="guard">headcol != 0</span></div>
+  <div class="dir"><b>right</b><span class="guard">headcol != cols - 1</span></div>
+</div>
+
+<div class="two">
+  <div>
+    <p class="col-h">Java — explicit copy constructor</p>
+    <div class="snippet">
+      <div class="bar"><span>NumberLink.java:189</span><span class="lang">java</span></div>
+<pre><span class="k">public</span> NumberLink moveUp() {
+    <span class="k">if</span> (!canMoveUp()) {
+        <span class="k">return</span> <span class="k">this</span>;
+    }
+    NumberLink child = <span class="k">new</span> <span class="f">NumberLink</span>(<span class="k">this</span>);
+    child.<span class="f">stepTo</span>(headrow - <span class="n">1</span>, headcol);
+    child.g = g + <span class="n">1</span>;
+    child.parent = <span class="k">this</span>;
+    <span class="k">return</span> child;
+}</pre>
+    </div>
+  </div>
+  <div>
+    <p class="col-h">C++ — one shared helper for all four</p>
+    <div class="snippet">
+      <div class="bar"><span>NumberLink.cpp:70</span><span class="lang">cpp</span></div>
+<pre>shared_ptr&lt;NumberLink&gt; <span class="f">makeChild</span>(<span class="k">int</span> row, <span class="k">int</span> col) {
+    <span class="k">auto</span> child = <span class="f">make_shared</span>&lt;NumberLink&gt;(*<span class="k">this</span>);
+    child-&gt;<span class="f">stepTo</span>(row, col);
+    child-&gt;g = g + <span class="n">1</span>;
+    child-&gt;parent = <span class="f">shared_from_this</span>();
+    <span class="k">return</span> child;
+}</pre>
+    </div>
+  </div>
+</div>
+
+<p>
+  The copy-then-mutate pattern makes states externally <strong>immutable</strong>.
+  There is no undo, no "restore the board" routine, and no risk of a failed move
+  leaving a half-modified state — a failed move just returns the original object.
+  The price is a full grid copy per move: <em>O(rows × cols)</em> time and memory,
+  acceptable at this scale.
+</p>
+
+<p>
+  <code>getNextStates()</code> is the successor function the search consumes. The
+  order is deliberately fixed — <strong>down, right, up, left</strong> — which is why
+  DFS and BFS produce different but reproducible solution paths.
+</p>
+
+<!-- 06 -->
+<h2 id="goal"><span class="num">06</span>Goal test</h2>
+<p>Two conditions, both required:</p>
+<ol>
+  <li><code>currentPair &gt; pairsCount</code> — no half-drawn path remains.</li>
+  <li>No <code>0</code> anywhere on the board — every cell used, which is the real
+      Numberlink rule and why the goal test has to scan the whole grid after the last
+      pair closes.</li>
+</ol>
+<p>
+  Because the check is cheap and the state is immutable, it is safe to call
+  <code>isGoal()</code> repeatedly — which the search loops do.
+</p>
+
+<!-- 07 -->
+<h2 id="eq"><span class="num">07</span>Equality &amp; hashing</h2>
+<p>
+  A search must recognise duplicates or it will expand the same position forever.
+  Two states are equal only when <strong>all three</strong> of these match:
+</p>
+<ul>
+  <li>the board contents,</li>
+  <li><code>currentPair</code>,</li>
+  <li><code>headrow</code> / <code>headcol</code>.</li>
+</ul>
+<p>
+  The board alone is not enough. Two states can have identical painted cells while
+  one is still mid-path and the other has moved on — the head's position and the
+  active pair are what distinguish them.
+</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>Language</th><th>Hash</th><th>Equality</th><th>Container</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Python</td><td class="mono">__hash__ → hash((board, pair, head))</td><td class="mono">__eq__</td><td><code>set()</code></td></tr>
+    <tr><td>C++</td><td class="mono">hashCode() — manual, 31×</td><td class="mono">equals()</td><td>needs an <code>std::hash</code> specialisation first</td></tr>
+    <tr><td>C#</td><td class="mono">GetHashCode() — 31× from seed 17</td><td class="mono">Equals(object)</td><td><code>HashSet&lt;T&gt;</code></td></tr>
+    <tr><td>Java</td><td class="mono">hashCode() — Arrays.deepHashCode</td><td class="mono">equals(Object)</td><td><code>HashSet</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  They all follow the same contract: equal objects must hash equally, and unequal
+  hash values are proof of inequality. The multiplier 31 is the conventional spread
+  choice from Java's own <code>String.hashCode</code>.
+</p>
+
+<!-- 08 -->
+<h2 id="search"><span class="num">08</span>The search — Java only</h2>
+<p>
+  Both solvers are the same twelve lines with a different container swapped in.
+  That is the entire difference between depth-first and breadth-first here.
+</p>
+
+<div class="two">
+  <div>
+    <p class="col-h">DFS — Stack (line 372)</p>
+    <div class="snippet">
+      <div class="bar"><span>taqyeem1dfs</span><span class="lang">java</span></div>
+<pre>Stack&lt;NumberLink&gt; stack = <span class="k">new</span> Stack&lt;&gt;();
+<span class="k">while</span> (!stack.<span class="f">isEmpty</span>()) {
+    NumberLink current = stack.<span class="f">pop</span>();
+    <span class="k">if</span> (current.<span class="f">isGoal</span>()) <span class="k">return</span> current;
+    <span class="k">for</span> (NumberLink next : current.<span class="f">getNextStates</span>())
+        <span class="k">if</span> (visited.<span class="f">add</span>(next)) stack.<span class="f">push</span>(next);
+}</pre>
+    </div>
+  </div>
+  <div>
+    <p class="col-h">BFS — Queue (line 400)</p>
+    <div class="snippet">
+      <div class="bar"><span>tkyeem1BFS</span><span class="lang">java</span></div>
+<pre>Queue&lt;NumberLink&gt; queue = <span class="k">new</span> LinkedList&lt;&gt;();
+<span class="k">while</span> (!queue.<span class="f">isEmpty</span>()) {
+    NumberLink current = queue.<span class="f">poll</span>();
+    <span class="k">if</span> (current.<span class="f">isGoal</span>()) <span class="k">return</span> current;
+    <span class="k">for</span> (NumberLink next : current.<span class="f">getNextStates</span>())
+        <span class="k">if</span> (visited.<span class="f">add</span>(next)) queue.<span class="f">add</span>(next);
+}</pre>
+    </div>
+  </div>
+</div>
+
+<p>
+  <code>visited.add(next)</code> doubles as the "is this new?" test, because
+  <code>Set.add</code> returns <code>false</code> for an element already present.
+  The short-circuit inside the <code>if</code> is therefore doing two jobs: dedup and
+  admission control.
+</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th></th><th>DFS</th><th>BFS</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Container</td><td><code>Stack</code> — last in, first out</td><td><code>Queue</code> — first in, first out</td></tr>
+    <tr><td>Frontier size</td><td>shallow: siblings of the current branch</td><td>a whole level at a time, which is the real cost here</td></tr>
+    <tr><td>Result</td><td>first solution found — here, always 20 moves</td><td>fewest moves — also 20</td></tr>
+    <tr><td>Complete</td><td>yes, thanks to <code>visited</code></td><td>yes</td></tr>
+    <tr><td>Used in <code>main</code></td><td>no</td><td>yes</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout" style="border-left-color:#4a58ad">
+  <span class="ct" style="color:#4a58ad">A subtlety worth knowing</span>
+  <p>
+    On this puzzle <strong>every</strong> complete solution has the same length — 20
+    moves. The board must be full, each empty cell costs exactly one move, and each
+    pair costs exactly one more to reach its end cell. So BFS's optimality guarantee
+    buys nothing here: DFS returns a 20-move solution too. The real difference is
+    memory and the order in which the tree is explored, not the answer's length.
+  </p>
+</div>
+
+<p>
+  Both check the goal when a state is <em>removed</em> from the container rather than
+  when it is added. That is correct but slightly wasteful: the frontier can grow one
+  full level deeper than necessary, and the start state gets re-tested although the
+  constructor already handled the degenerate case.
+</p>
+
+<!-- 09 -->
+<h2 id="main"><span class="num">09</span>What each main does</h2>
+<p>
+  Three of the four files are demonstrations, not solvers. They share the identical
+  script and the identical hard-coded board:
+</p>
+<ol>
+  <li>print the start state,</li>
+  <li>print <code>isGoal()</code> — always <code>false</code> here,</li>
+  <li>print every legal next state from the start,</li>
+  <li>hand-draw pair 1 with the chained call
+      <code>right → right → down → down → left → down → down</code>.</li>
+</ol>
+<p>
+  That chain only works because <code>move…</code> returns <code>this</code> on an
+  illegal move instead of throwing — the calls never break a fluent chain.
+</p>
+<p>
+  The Java <code>main</code> replaces steps 3–4 with one call to
+  <code>tkyeem1BFS(start)</code> and prints the full path to the solution via
+  <code>printPath()</code>.
+</p>
+
+<!-- 10 -->
+<h2 id="findings"><span class="num">10</span>Findings</h2>
+<p>Ordered roughly by how much they matter. None of these stop the program from working.</p>
+
+<div class="find">
+  <div class="item">
+    <h4>No pruning of dead branches <span class="tag perf">performance</span></h4>
+    <p>
+      Nothing detects that a drawn path just walled off a remaining endpoint. The
+      search happily explores states that can never be completed. A cheap test —
+      "does every unfinished pair's end cell still have at least one free
+      neighbour?" — would cut the expanded state count dramatically, and it is the
+      single highest-value change.
+    </p>
+  </div>
+  <div class="item">
+    <h4>Name typo in the Java solver <span class="tag style">style</span></h4>
+    <p>
+      <code>taqyeem1dfs</code> versus <code>tkyeem1BFS</code> — two spellings of the
+      same word, and inconsistent casing. Rename to <code>solveDFS</code> /
+      <code>solveBFS</code> for symmetry.
+    </p>
+  </div>
+  <div class="item">
+    <h4>Illegal moves return <code>this</code> <span class="tag risk">risk</span></h4>
+    <p>
+      A failed move is invisible: the caller gets a state back and cannot tell it was
+      rejected. Convenient for the demo chain, dangerous for a solver, because a
+      forgotten <code>can…</code> check silently produces a duplicate state instead
+      of an error.
+    </p>
+  </div>
+  <div class="item">
+    <h4>C++ <code>printPath()</code> requires <code>shared_from_this()</code> <span class="tag risk">risk</span></h4>
+    <p>
+      It throws if invoked on a stack-allocated state. Only safe on objects actually
+      owned by a <code>shared_ptr</code>, as in <code>main</code>. Also not
+      <code>const</code>, so it cannot be called on a const reference.
+    </p>
+  </div>
+  <div class="item">
+    <h4>C# <code>Equals</code> ignores dimensions <span class="tag bug">bug</span></h4>
+    <p>
+      It compares <code>board[i, j]</code> using <code>this</code>'s <code>rows</code>
+      and <code>cols</code> against <code>other</code>'s array. Two differently sized
+      states would throw an index error instead of returning <code>false</code>.
+    </p>
+  </div>
+  <div class="item">
+    <h4>Python <code>copy()</code> copies the parent it is about to replace <span class="tag style">style</span></h4>
+    <p>
+      <code>p.parent = self.parent</code> is immediately overwritten by every
+      <code>move_*</code> with <code>child.parent = self</code>. Harmless, but it
+      reads as if the copy were going to share a parent, which it never does.
+    </p>
+  </div>
+  <div class="item">
+    <h4>Full grid copy per move <span class="tag perf">performance</span></h4>
+    <p>
+      Straightforward and bug-resistant, but <em>O(rows × cols)</em> per generated
+      child. Fine for 5 × 5; at 10 × 10 with many pairs it becomes the bottleneck
+      before the search itself does.
+    </p>
+  </div>
+</div>
+
+<p>
+  Scaling beyond the sample board needs two more things on top of pruning: a
+  heuristic so the search can be guided (A* / IDA*) and a memoised impossibility
+  check for partially drawn boards. The current design supports both without
+  changing the state model.
+</p>
+
+<!-- 11 -->
+<h2 id="linemap"><span class="num">11</span>Line map</h2>
+<p>Where each concept lives, so the four files can be read side by side.</p>
+
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>Concept</th><th>Python</th><th>C++</th><th>C#</th><th>Java</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Board field</td><td class="mono">23</td><td class="mono">25</td><td class="mono">16</td><td class="mono">24</td></tr>
+    <tr><td>Main constructor</td><td class="mono">15–60</td><td class="mono">80–128</td><td class="mono">36–96</td><td class="mono">48–99</td></tr>
+    <tr><td>Pair counting</td><td class="mono">26–30</td><td class="mono">86–93</td><td class="mono">43–53</td><td class="mono">57–64</td></tr>
+    <tr><td>Endpoint scan</td><td class="mono">38–49</td><td class="mono">100–115</td><td class="mono">60–81</td><td class="mono">71–91</td></tr>
+    <tr><td>Copy</td><td class="mono">62–80</td><td class="mono">133</td><td class="mono">99–116</td><td class="mono">106–125</td></tr>
+    <tr><td>Goal test</td><td class="mono">82–90</td><td class="mono">136–148</td><td class="mono">119–136</td><td class="mono">132–144</td></tr>
+    <tr><td>canEnter</td><td class="mono">92–96</td><td class="mono">46–51</td><td class="mono">139–146</td><td class="mono">150–155</td></tr>
+    <tr><td>stepTo</td><td class="mono">98–108</td><td class="mono">55–67</td><td class="mono">149–166</td><td class="mono">161–173</td></tr>
+    <tr><td>Four move generators</td><td class="mono">110–160</td><td class="mono">150–192</td><td class="mono">168–238</td><td class="mono">180–273</td></tr>
+    <tr><td>getNextStates</td><td class="mono">162–172</td><td class="mono">194–209</td><td class="mono">240–260</td><td class="mono">275–291</td></tr>
+    <tr><td>toString</td><td class="mono">174–185</td><td class="mono">211–227</td><td class="mono">262–282</td><td class="mono">294–314</td></tr>
+    <tr><td>Hash</td><td class="mono">187–190</td><td class="mono">230–240</td><td class="mono">285–295</td><td class="mono">317–322</td></tr>
+    <tr><td>Equality</td><td class="mono">192–199</td><td class="mono">243–248</td><td class="mono">298–320</td><td class="mono">325–339</td></tr>
+    <tr><td>printPath</td><td class="mono">207–217</td><td class="mono">258–271</td><td class="mono">332–348</td><td class="mono">349–364</td></tr>
+    <tr><td>Solver</td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td class="mono">366–420</td></tr>
+    <tr><td>main</td><td class="mono">220–239</td><td class="mono">274–296</td><td class="mono">350–374</td><td class="mono">422–441</td></tr>
+  </tbody>
+</table>
+</div>
+
+<footer>
+  <span>Generated from the four source files in <code>NumberLink-students</code>.</span>
+  <span>Self-contained HTML — no network access required.</span>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>UCS على NumberLink — خطوة بخطوة</title>
+<style>
+  :root{
+    --bg:#0a0b0d;
+    --panel:#12141a;
+    --panel-2:#171a21;
+    --line:#242830;
+    --line-2:#2e333d;
+    --ink:#e9ebef;
+    --dim:#8d949f;
+    --dimmer:#626973;
+    --accent:#f0a24b;
+    --accent-dim:rgba(240,162,75,.14);
+    --ok:#5fbf8a;
+    --bad:#e2604f;
+    --blue:#7aa2f7;
+    --sans:"Segoe UI",Tahoma,-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"JetBrains Mono","Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 600px at 78% -10%, #17202b 0%, transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, #1a1611 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font:400 15px/1.6 var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  button,input{font:inherit;color:inherit}
+  button{background:none;border:none;cursor:pointer}
+  .wrap{max-width:1320px;margin:0 auto;padding:22px 24px 40px}
+
+  /* ---------- header ---------- */
+  .top{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between;
+    padding-bottom:18px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font:700 24px/1.15 var(--sans);letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  h1 span{font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dimmer)}
+  .sub{margin:7px 0 0;font-size:13.5px;line-height:1.55;color:var(--dim);max-width:64ch}
+  .rule{display:flex;gap:9px;flex-wrap:wrap}
+  .rule-item{display:flex;align-items:center;gap:8px;padding:8px 12px 8px 9px;background:var(--panel);
+    border:1px solid var(--line);border-radius:11px;font:500 12px/1 var(--sans);color:var(--dim)}
+  .rk{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+    background:#1b2028;color:var(--ink);font:700 12px/1 var(--mono)}
+  .rk.turn{background:var(--accent);color:#241505;box-shadow:0 0 18px -3px rgba(240,162,75,.8)}
+
+  /* ---------- layout ---------- */
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,450px);gap:24px;align-items:start;padding-top:22px}
+  .stage{min-width:0}
+  .side{min-width:0}
+  .stage > .panel{width:100%;max-width:560px;margin:14px auto 0}
+  .stats,.legend,.narration,.controls,.scrub{width:100%;max-width:560px;margin-inline:auto}
+
+  /* ---------- board ---------- */
+  .board-shell{
+    position:relative;background:linear-gradient(180deg,#101217,#0c0e12);
+    border:1px solid var(--line);border-radius:18px;padding:28px 26px 26px;
+    display:flex;justify-content:center;
+  }
+  .tag{position:absolute;top:11px;inset-inline-start:14px;font:600 10px/1 var(--sans);
+    letter-spacing:.04em;color:var(--dimmer);background:#0e1014;border:1px solid var(--line);
+    padding:6px 10px;border-radius:999px;transition:.2s}
+  .tag.pop{color:var(--blue);border-color:rgba(122,162,247,.4)}
+  .tag.child{color:var(--accent);border-color:rgba(240,162,75,.45)}
+  .tag.push{color:var(--ok);border-color:rgba(95,191,138,.45)}
+  .tag.goal{color:var(--ok);border-color:rgba(95,191,138,.6);background:rgba(95,191,138,.1)}
+
+  .board{position:relative;width:min(100%,460px);aspect-ratio:1;container-type:inline-size}
+  .cell{position:absolute;z-index:2;border-radius:12px;background:#171a21;border:1px solid #252a33;
+    display:grid;place-items:center;
+    transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease}
+  .cell .dot{width:5px;height:5px;border-radius:50%;background:#2c323c}
+  .cell.filled{background:rgba(var(--rgb),.16);border-color:rgba(var(--rgb),.45)}
+  .cell.endpoint{background:rgba(var(--rgb),.30);border-color:rgba(var(--rgb),.85)}
+  .cell .v{position:relative;z-index:2;font:700 22px/1 var(--mono);font-size:clamp(14px,4.9cqw,24px);
+    color:var(--pc);background:rgba(9,11,16,.8);border:1px solid rgba(var(--rgb),.55);
+    border-radius:10px;padding:2px 8px;text-shadow:0 0 18px rgba(var(--rgb),.4);
+    box-shadow:0 2px 10px rgba(0,0,0,.45)}
+  .cell.head{z-index:4;box-shadow:0 0 0 2px #f6f8fb,0 0 0 6px rgba(122,162,247,.14),0 0 26px -4px rgba(122,162,247,.55)}
+  .cell.new{outline:2px solid var(--accent);outline-offset:-2px;animation:pop .32s ease}
+  @keyframes pop{from{transform:scale(.86)}to{transform:scale(1)}}
+
+  .overlay{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
+  .path{fill:none;stroke-width:.13;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+  .arrow{stroke:var(--accent);stroke-width:.09;stroke-dasharray:.15 .12;stroke-linecap:round;fill:none}
+  .cost{position:absolute;z-index:5;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;
+    padding:4px 8px;border-radius:8px;background:#0d0f13;border:1px solid var(--line-2);
+    font:700 11px/1 var(--mono);color:var(--ink);pointer-events:none;white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.55)}
+  .cost.turn{border-color:rgba(240,162,75,.75);color:var(--accent);background:rgba(240,162,75,.1)}
+  .cost em{font:500 10px/1 var(--sans);font-style:normal;opacity:.85}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:14px}
+  .stats>div{background:var(--panel);padding:10px 12px 9px;display:flex;flex-direction:column;gap:5px;min-width:0}
+  .stats b{font:700 17px/1 var(--mono);letter-spacing:-.02em}
+  .stats span{font:500 9.5px/1.3 var(--sans);color:var(--dimmer);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- legend ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-top:13px;
+    font:500 11.5px/1.5 var(--sans);color:var(--dim)}
+  .legend .li{display:flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:block;flex:0 0 auto}
+  .legend i.ring{background:#fff;border-radius:50%;box-shadow:0 0 0 2px rgba(122,162,247,.3)}
+  .legend i.diamond{transform:rotate(45deg);background:var(--accent);border-radius:2px}
+
+  /* ---------- narration ---------- */
+  .narration{margin-top:13px;min-height:62px;display:flex;gap:11px;align-items:flex-start;
+    padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    font-size:13.5px;line-height:1.65;color:#c4cad3;transition:border-color .2s,background .2s}
+  .narration .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:8px;
+    flex:0 0 auto;box-shadow:0 0 12px currentColor;color:var(--accent)}
+  .narration b{color:#fff;font-weight:700}
+  .narration code{font:600 12px/1.2 var(--mono);color:var(--accent);background:rgba(240,162,75,.1);
+    padding:2px 5px;border-radius:4px}
+  .narration.pop .dot{background:var(--blue);color:var(--blue)}
+  .narration.child .dot{background:var(--accent);color:var(--accent)}
+  .narration.push .dot{background:var(--ok);color:var(--ok)}
+  .narration.skip .dot{background:#565d68;color:#565d68;box-shadow:none}
+  .narration.intro .dot{background:#565d68;color:#565d68;box-shadow:none}
+  .narration.goal{border-color:rgba(95,191,138,.45);background:rgba(95,191,138,.07)}
+  .narration.goal .dot{background:var(--ok);color:var(--ok)}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 15px;border-radius:10px;
+    background:var(--panel);border:1px solid var(--line);font:500 12.5px/1 var(--sans);
+    color:#cfd4db;transition:.15s;white-space:nowrap}
+  .btn:hover{background:var(--panel-2);border-color:var(--line-2);color:#fff}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#241505;font-weight:700}
+  .btn.primary:hover{background:#f5b167}
+  .btn.primary.playing{background:#1d2129;border-color:var(--line-2);color:var(--accent)}
+  .btn .g{font:400 13px/1 var(--sans)}
+  .speed{margin-inline-start:auto;display:flex;align-items:center;gap:9px;
+    font:500 11px/1 var(--sans);color:var(--dimmer);white-space:nowrap}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,var(--line-2),#3b4250);outline-offset:8px;width:104px;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+    background:var(--accent);border:2px solid #0d0f13;cursor:pointer}
+  input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--accent);
+    border:2px solid #0d0f13;cursor:pointer}
+  .scrub{display:flex;align-items:center;gap:12px;margin-top:10px}
+  .scrub input{flex:1;width:auto}
+  .scrub span{font:500 11px/1 var(--mono);color:var(--dimmer);white-space:nowrap}
+
+  /* ---------- side panels ---------- */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:11px}
+  .panel h2{font:600 11px/1 var(--sans);letter-spacing:.02em;color:var(--dim);margin:0}
+  .panel .hint{font:400 10.5px/1.3 var(--sans);color:var(--dimmer)}
+
+  /* ---------- code cards ---------- */
+  .ccards{display:flex;flex-direction:column;gap:10px}
+  .ccard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    transition:border-color .15s,box-shadow .15s}
+  .ccard.on{border-color:rgba(240,162,75,.45);box-shadow:0 0 0 1px rgba(240,162,75,.1)}
+  .chead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:6px 10px 5px;background:#0d0f14;border-bottom:1px solid var(--line)}
+  .chead b{font:600 10.5px/1 var(--mono);color:#dbe1e9;letter-spacing:.02em}
+  .chead span{font:400 9px/1.3 var(--sans);color:var(--dimmer);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .clines{padding:2px 0 4px;direction:ltr;text-align:left}
+  .ln{display:grid;grid-template-columns:31px minmax(0,1fr);gap:7px;padding:0 10px 0 0;
+    border-left:3px solid transparent;transition:background .12s}
+  .ln .no{font:500 9px/1.45 var(--mono);color:#464d58;text-align:right;user-select:none}
+  .ln code{font:400 10px/1.45 var(--mono);color:#c7cdd6;white-space:pre-wrap;
+    overflow-wrap:anywhere;tab-size:4}
+  .ln.on{background:rgba(240,162,75,.11);border-left-color:var(--accent)}
+  .ln.on code{color:#f5f7fa}
+  .ln.on .no{color:var(--accent)}
+  .tk-k{color:#7fb3ff}
+  .tk-t{color:#63d7c3}
+  .tk-s{color:#e0b072}
+  .tk-c{color:#5f6874;font-style:italic}
+  .tk-n{color:#d9a0e0}
+
+  /* ---------- current line bar ---------- */
+  .nowbar{position:sticky;top:8px;z-index:6;display:flex;align-items:center;gap:8px;
+    padding:9px 11px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;
+    background:rgba(13,15,20,.94);backdrop-filter:blur(8px);
+    font:500 11px/1 var(--sans);color:var(--dim)}
+  .nowbar .nowlabel{font:500 9.5px/1 var(--sans);color:var(--dimmer)}
+  .nowbar > b{font:700 11.5px/1 var(--mono);color:var(--accent)}
+  .nowbar .nowline{display:flex;align-items:center;gap:5px;color:var(--dim)}
+  .nowbar .nowline b{font:700 11.5px/1 var(--mono);color:var(--ink)}
+  .nowbar .nowhint{margin-inline-start:auto;font-size:9.5px;color:var(--dimmer);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- frontier thumbs ---------- */
+  .thumbs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .thumb{background:#0e1014;border:1px solid var(--line);border-radius:8px;padding:7px 4px 6px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;transition:.18s}
+  .thumb.next{border-color:rgba(240,162,75,.65);background:rgba(240,162,75,.07);
+    box-shadow:0 0 0 1px rgba(240,162,75,.18)}
+  .thumb.mark{border-color:rgba(95,191,138,.65)}
+  .thumb .mini{display:grid;gap:1.5px}
+  .thumb .mini i{width:7px;height:7px;border-radius:1.5px;background:#23272f;display:block}
+  .thumb .mini i.h{outline:1.5px solid #fff;outline-offset:-1px}
+  .thumb em{font:500 8.5px/1 var(--mono);color:var(--dimmer);font-style:normal}
+  .thumb.next em{color:var(--accent)}
+  .more{grid-column:1/-1;text-align:center;font:500 10px/1.5 var(--sans);color:var(--dimmer);padding-top:3px}
+
+  /* ---------- heap ---------- */
+  .heap{position:relative;height:214px;direction:ltr;margin-top:2px}
+  .hlinks{position:absolute;inset:0;width:100%;height:214px;pointer-events:none}
+  .hlinks line{stroke:#2b313b;stroke-width:1.25;vector-effect:non-scaling-stroke}
+  .hn{position:absolute;width:40px;height:40px;transform:translate(-50%,-50%);border-radius:50%;
+    display:grid;place-items:center;background:#141821;border:1px solid #333a46;
+    font:700 12px/1 var(--mono);color:#cdd3db;transition:border-color .15s,box-shadow .15s,background .15s}
+  .hn .p{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;
+    border-radius:50%;background:#4a515c}
+  .hn.stale{border-style:dashed;color:#6a7280;opacity:.72}
+  .hn.path{border-color:rgba(122,162,247,.75);box-shadow:0 0 0 3px rgba(122,162,247,.08)}
+  .hn.root{border-color:var(--accent);color:var(--accent);
+    box-shadow:0 0 0 3px rgba(240,162,75,.12),0 0 20px -6px rgba(240,162,75,.75)}
+  .hn.new{border-color:var(--ok);color:#e2f7ea;box-shadow:0 0 18px -4px rgba(95,191,138,.65)}
+  .heap-more{position:absolute;inset-inline-end:2px;bottom:-3px;font:500 9.5px/1 var(--sans);color:var(--dimmer)}
+  .heap-empty{display:grid;place-items:center;height:100%;font:500 11px/1.4 var(--sans);color:var(--dimmer)}
+  .heap-arr{display:flex;gap:4px;margin-top:9px;direction:ltr;overflow-x:auto;padding-bottom:2px;
+    scrollbar-width:none}
+  .heap-arr::-webkit-scrollbar{display:none}
+  .ha{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:26px;
+    padding:4px 4px 3px;border-radius:6px;background:#0e1014;border:1px solid var(--line)}
+  .ha b{font:600 11px/1 var(--mono);color:#c7cdd6}
+  .ha i{font:500 8px/1 var(--mono);color:#4a515c;font-style:normal}
+  .ha.root{border-color:rgba(240,162,75,.6);background:rgba(240,162,75,.07)}
+  .ha.root b{color:var(--accent)}
+  .ha.on{border-color:rgba(122,162,247,.55)}
+  .ha.stale{opacity:.55;border-style:dashed}
+  .ha.more{justify-content:center;font:500 9.5px/1 var(--sans);color:var(--dimmer);padding:9px 7px}
+  .hint.push{color:var(--ok)}
+  .hint.pop{color:var(--accent)}
+  .hint.stale{color:var(--dimmer)}
+  .heap-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:9px;
+    font:500 9.5px/1.2 var(--sans);color:var(--dimmer)}
+  .heap-legend span{display:flex;align-items:center;gap:5px}
+  .heap-legend i{width:9px;height:9px;border-radius:50%;border:1.5px solid;display:block;flex:0 0 auto}
+  .heap-legend i.root{border-color:var(--accent)}
+  .heap-legend i.path{border-color:#7aa2f7}
+  .heap-legend i.new{border-color:var(--ok)}
+  @media (max-width:720px){
+    .hn{width:35px;height:35px;font-size:11px}
+  }
+
+  footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);
+    font:400 11.5px/1.8 var(--sans);color:var(--dimmer);display:flex;flex-wrap:wrap;
+    gap:8px 24px;justify-content:space-between}
+  kbd{font:500 10px/1 var(--mono);background:#1b1f27;border:1px solid var(--line-2);
+    border-bottom-width:2px;border-radius:4px;padding:3px 5px;color:#b9c0ca}
+
+  @media (max-width:900px){
+    .grid{grid-template-columns:minmax(0,1fr)}
+    .thumbs{grid-template-columns:repeat(3,1fr)}
+  }
+  @media (max-width:720px){
+    .wrap{padding:16px 14px 30px}
+    .board-shell{padding:26px 12px 12px}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stats>div:nth-child(5){grid-column:1/-1}
+    .thumbs{grid-template-columns:repeat(3,1fr)}
+    .speed{margin-inline-start:0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>UCS <span>NumberLink · Java</span></h1>
+      <p class="sub">البحث ذو التكلفة الموحّدة: نسحب دائمًا الحالة الأقل تكلفة، والسطر المضيء في الكود هو ما ينفّذه البحث الآن، ومعه تتغير اللوحة وشجرة الـ heap.</p>
+    </div>
+    <div class="rule" aria-label="قاعدة التكلفة">
+      <div class="rule-item"><span class="rk">1</span><span>خلية عادية</span></div>
+      <div class="rule-item"><span class="rk turn">2</span><span>خلية منعطفة</span></div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="stage">
+      <div class="board-shell">
+        <span class="tag" id="tag">البداية</span>
+        <div class="board" id="board" role="img" aria-label="لوحة NumberLink"></div>
+      </div>
+
+      <div class="stats">
+        <div><b id="stG">0</b><span>تكلفة الحالة g</span></div>
+        <div><b id="stExp">0</b><span>حالة موسّعة</span></div>
+        <div><b id="stFront">1</b><span>داخل الطابور</span></div>
+        <div><b id="stKnown">1</b><span>حالة معروفة</span></div>
+        <div><b id="stPair" dir="ltr">1 / 5</b><span>الزوج الحالي</span></div>
+      </div>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="narration" id="narration" aria-live="polite">
+        <span class="dot"></span><span id="msg"></span>
+      </div>
+
+      <div class="controls">
+        <button class="btn primary" id="play"><span class="g">▶</span><span id="playLabel">تشغيل</span></button>
+        <button class="btn" id="next">خطوة</button>
+        <button class="btn" id="prev">رجوع</button>
+        <button class="btn" id="expand">التوسيع التالي</button>
+        <button class="btn" id="jump">إلى الحل</button>
+        <button class="btn" id="reset">إعادة</button>
+        <label class="speed">سرعة
+          <input type="range" id="speed" min="0" max="7" value="5" aria-label="سرعة العرض">
+        </label>
+      </div>
+
+      <div class="scrub">
+        <input type="range" id="scrub" min="0" max="100" value="0" aria-label="موضع العرض">
+        <span id="pos">1 / 1</span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>الـ heap · طابور الأولوية</h2>
+          <span class="hint" id="heapHint">الجذر = الأصغر g</span>
+        </div>
+        <div class="heap" id="heap"></div>
+        <div class="heap-arr" id="heapArr"></div>
+        <div class="heap-legend">
+          <span><i class="root"></i>التالي للسحب</span>
+          <span><i class="path"></i>مسار الطفو/الغرق</span>
+          <span><i class="new"></i>أُضيف الآن</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>الطابور · frontier</h2>
+          <span class="hint">الأصغر g أولًا</span>
+        </div>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="nowbar" id="nowbar">
+        <span class="nowlabel">الآن</span>
+        <b dir="ltr" id="nowFn">ucs()</b>
+        <span class="nowline">سطر <b dir="ltr" id="nowLine">446</b></span>
+        <span class="nowhint">السطر المضيء = التنفيذ</span>
+      </div>
+      <div class="ccards" id="code" dir="ltr"></div>
+    </aside>
+  </main>
+
+  <footer>
+    <span>الأسطر منقولة حرفيًا من <b dir="ltr">NumberLink.java</b> — <code dir="ltr">stepCost</code> 188، <code dir="ltr">makeChild</code> 195، <code dir="ltr">ucs</code> 437. شجرة الـ heap تعرض أول 15 عنصرًا من مصفوفة الطابور بترتيبها الفعلي، والخط الأزرق هو مسار الطفو/الغرق. عند تساوي التكلفة قد يختلف ترتيب الاختيار عن Java، لكن التكلفة النهائية هي نفسها.</span>
+    <span><kbd>مسافة</kbd> تشغيل · <kbd>←</kbd> تقدّم · <kbd>→</kbd> رجوع · <kbd>R</kbd> إعادة</span>
+  </footer>
+</div>
+
+<script>
+/* =====================================================================
+   1) اللوحة والأزواج
+   ===================================================================== */
+const ROWS = 5, COLS = 5, N = ROWS * COLS;
+const PUZZLE = [
+  [1,0,0,2,0],
+  [0,3,0,4,0],
+  [0,0,0,0,0],
+  [0,0,4,0,2],
+  [3,1,5,0,5]
+];
+const PAIR_COLORS = ['', '#dd5c4a', '#2f9e9b', '#cf9a3c', '#6d7ce0', '#a86bc4'];
+const PAIR_RGB    = ['', '221,92,74', '47,158,155', '207,154,60', '109,124,224', '168,107,196'];
+const START_FLAT  = PUZZLE.flat();
+
+let PAIRS = 0;
+for (const v of START_FLAT) if (v > PAIRS) PAIRS = v;
+
+const SR = [], SC = [], ER = [], EC = [];
+const seen = new Array(PAIRS + 1).fill(0);
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const k = PUZZLE[r][c];
+    if (!k) continue;
+    if (seen[k] === 0) { SR[k] = r; SC[k] = c; } else { ER[k] = r; EC[k] = c; }
+    seen[k]++;
+  }
+}
+
+/* ترتيب الحركات مطابق لـ getNextStates(): أسفل، يمين، أعلى، يسار */
+const MOVES = [
+  { name:'down',  ar:'أسفل', dr: 1, dc: 0, code: 2 },
+  { name:'right', ar:'يمين', dr: 0, dc: 1, code: 4 },
+  { name:'up',    ar:'أعلى', dr:-1, dc: 0, code: 1 },
+  { name:'left',  ar:'يسار', dr: 0, dc:-1, code: 3 }
+];
+const dirName = code => {
+  if (code === 0) return 'لا شيء';
+  const m = MOVES.find(x => x.code === code);
+  return m ? m.ar : '؟';
+};
+
+const key = s => s.b.join('') + '|' + s.cur + '|' + s.hr + ',' + s.hc + '|' + s.dir;
+const isGoal = s => s.cur > PAIRS && s.b.every(v => v > 0);
+
+function canEnter(s, r, c) {
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+  if (s.cur > PAIRS) return false;
+  if (r === ER[s.cur] && c === EC[s.cur]) return true;
+  return s.b[r * COLS + c] === 0;
+}
+
+/* نسخة JS من makeChild + stepCost + stepTo */
+function makeChild(s, m) {
+  const nr = s.hr + m.dr, nc = s.hc + m.dc, idx = nr * COLS + nc;
+  const turn = s.dir !== 0 && s.dir !== m.code;
+  const cost = turn ? 2 : 1;
+
+  const b = s.b.slice();
+  let cur = s.cur, hr = nr, hc = nc, dir = m.code;
+  let path = s.path.concat([idx]);
+  let done = s.done;
+  let finished = false;
+
+  if (nr === ER[cur] && nc === EC[cur]) {
+    finished = true;
+    done = s.done.concat([s.path.concat([idx])]);   // المسار الكامل لهذا الزوج
+    cur++;
+    path = [];
+    dir = 0;                                        // مسار جديد: أول حركة ليست منعطفًا
+    if (cur <= PAIRS) {
+      hr = SR[cur]; hc = SC[cur];
+      path = [hr * COLS + hc];
+    } else {
+      hr = s.hr; hc = s.hc;                         // نفس سلوك stepTo في Java
+    }
+  } else {
+    b[idx] = s.cur;
+  }
+
+  return {
+    s: { b, cur, hr, hc, dir, g: s.g + cost, path, done },
+    cost, turn, finished, nr, nc
+  };
+}
+
+/* =====================================================================
+   2) بناء أثر التنفيذ الكامل (frames)
+   ===================================================================== */
+const frames = [];
+
+function buildTrace() {
+  const bestG = new Map();
+  const heap = [];
+  let seq = 0, expanded = 0;
+
+  const less = (a, b) => a.s.g < b.s.g || (a.s.g === b.s.g && a.seq < b.seq);
+
+  /* سلسلة الأسلاف في المصفوفة: من العقدة إلى الجذر */
+  function ancestors(i) {
+    const a = [];
+    while (i > 0) { a.push(i); i = (i - 1) >> 1; }
+    a.push(0);
+    return a;
+  }
+
+  function hpush(e) {
+    heap.push(e);
+    let i = heap.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (less(heap[i], heap[p])) {
+        [heap[i], heap[p]] = [heap[p], heap[i]];
+        i = p;
+      } else break;
+    }
+    return i;                                    // موضع العنصر بعد الطفو لأعلى
+  }
+  function hpop() {
+    const top = heap[0];
+    const last = heap.pop();
+    let lastIdx = 0;
+    if (heap.length) {
+      heap[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1, r = l + 1;
+        let m = i;
+        if (l < heap.length && less(heap[l], heap[m])) m = l;
+        if (r < heap.length && less(heap[r], heap[m])) m = r;
+        if (m === i) break;
+        [heap[i], heap[m]] = [heap[m], heap[i]];
+        i = m;
+      }
+      lastIdx = i;                               // موضع آخر عنصر بعد الغرق لأسفل
+    }
+    return { top, idx: lastIdx };
+  }
+
+  /* أفضل 6 حالات في الطابور، بدون فرز كامل */
+  function topChips(n) {
+    const out = [];
+    for (const e of heap) {
+      let i = 0;
+      while (i < out.length && !less(e, out[i])) i++;
+      if (i < n) {
+        out.splice(i, 0, e);
+        if (out.length > n) out.pop();
+      }
+    }
+    return out.map(e => ({
+      g: e.s.g, key: key(e.s), b: e.s.b,
+      hr: e.s.hr, hc: e.s.hc, cur: e.s.cur
+    }));
+  }
+
+  function add(o) {
+    frames.push({
+      line: o.line, tone: o.tone, tag: o.tag, msg: o.msg,
+      b: o.s.b, cur: o.s.cur, hr: o.s.hr, hc: o.s.hc, g: o.s.g,
+      path: o.s.path, done: o.s.done,
+      arrow: o.arrow || null,
+      newCell: o.newCell === undefined ? -1 : o.newCell,
+      chips: topChips(6),
+      mark: o.mark || null,
+      heapSize: heap.length,
+      heapFirst: heap.slice(0, 15).map(e => {
+        const k = key(e.s);
+        return {
+          g: e.s.g, key: k, cur: e.s.cur, hr: e.s.hr, hc: e.s.hc,
+          stale: (bestG.get(k) === undefined ? e.s.g : bestG.get(k)) < e.s.g
+        };
+      }),
+      heapPath: o.heapPath || null,
+      heapOp: o.heapOp || null,
+      stats: { exp: expanded, frontier: heap.length, known: bestG.size }
+    });
+  }
+
+  const start = {
+    b: START_FLAT.slice(), cur: 1, hr: SR[1], hc: SC[1], dir: 0, g: 0,
+    path: [SR[1] * COLS + SC[1]], done: []
+  };
+  bestG.set(key(start), 0);
+  const startPos = hpush({ s: start, seq: seq++ });
+
+  add({
+    s: start, line: 446, tone: 'intro', tag: 'البداية',
+    heapPath: ancestors(startPos), heapOp: { kind: 'push', g: 0 },
+    msg: 'نضع حالة البداية في الطابور بتكلفة <b>g = 0</b>. الرأس يبدأ عند خلية الرقم 1، والهدف أن تُملأ كل الخلايا وتُوصل كل الأزواج.'
+  });
+
+  while (heap.length) {
+    const popped = hpop();
+    const cur = popped.top.s;
+    const popPath = heap.length ? ancestors(popped.idx) : null;
+    const known = bestG.get(key(cur));
+
+    if (cur.g > known) {
+      add({
+        s: cur, line: 452, tone: 'skip', tag: 'نسخة قديمة',
+        heapPath: popPath, heapOp: { kind: 'stale', g: cur.g },
+        msg: 'هذه نسخة قديمة من حالة معروفة بتكلفة <b>' + known + '</b>؛ تكلفتها الآن ' + cur.g +
+             ' وهي أسوأ، لذلك نتجاهلها. هذا هو سطر <code>continue</code>.'
+      });
+      continue;
+    }
+
+    expanded++;
+    add({
+      s: cur, line: 450, tone: 'pop', tag: 'من الطابور',
+      heapPath: popPath, heapOp: { kind: 'pop', g: cur.g },
+      msg: 'سحبنا الحالة الأقل تكلفة من الطابور: <b>g = ' + cur.g + '</b>' +
+           (cur.cur <= PAIRS
+             ? '، الزوج ' + cur.cur + '، الرأس عند <span dir="ltr">(' + cur.hr + ',' + cur.hc + ')</span>'
+             : '، وكل الأزواج مكتملة') +
+           '. هذه الحالة رقم <b>' + expanded + '</b> التي نوسّعها.'
+    });
+
+    if (isGoal(cur)) {
+      const given = START_FLAT.filter(v => v > 0).length;
+      const cells = N - given + PAIRS;
+      add({
+        s: cur, line: 456, tone: 'goal', tag: 'الهدف',
+        heapPath: popPath, heapOp: { kind: 'pop', g: cur.g },
+        msg: '<b>هدف!</b> كل الأزواج موصولة وكل الخلايا ممتلئة. التكلفة <b>g = ' + cur.g +
+             '</b>، وهي مجموع ' + cells + ' خلية و' + (cur.g - cells) +
+             ' منعطفات. أول هدف يُسحب من الطابور هو الأمثل، لذلك نتوقف هنا.'
+      });
+      break;
+    }
+
+    for (const m of MOVES) {
+      const nr = cur.hr + m.dr, nc = cur.hc + m.dc;
+      if (!canEnter(cur, nr, nc)) continue;
+
+      const ch = makeChild(cur, m);
+      const arrow = { r0: cur.hr, c0: cur.hc, r1: nr, c1: nc, cost: ch.cost, turn: ch.turn };
+
+      let why;
+      if (cur.dir === 0) {
+        why = 'أول حركة في المسار، فلا اتجاه سابق ⇒';
+      } else if (ch.turn) {
+        why = 'الاتجاه تغيّر من <b>' + dirName(cur.dir) + '</b> إلى <b>' + m.ar +
+              '</b> ⇒ الخلية <b>منعطفة</b>،';
+      } else {
+        why = 'نفس اتجاه المسار ⇒ الخلية عادية،';
+      }
+
+      let costMsg = 'حركة <b>' + m.ar + '</b> إلى <span dir="ltr">(' + nr + ',' + nc + ')</span>: ' +
+        why + ' تكلفتها <b>' + ch.cost + '</b> ⇒ <b>g = ' + cur.g + ' + ' + ch.cost + ' = ' + ch.s.g + '</b>.';
+      if (ch.finished) {
+        costMsg += ' وأكملنا الزوج ' + cur.cur + '، لذا ينتقل الرأس إلى ' +
+          (ch.s.cur <= PAIRS ? 'بداية الزوج ' + ch.s.cur : 'النهاية') + '.';
+      }
+
+      add({
+        s: ch.s, line: ch.cost === 2 ? 190 : 192, tone: 'child', tag: 'ابن جديد',
+        newCell: nr * COLS + nc, arrow, msg: costMsg
+      });
+
+      const ck = key(ch.s);
+      const knownC = bestG.get(ck);
+
+      if (knownC === undefined || ch.s.g < knownC) {
+        bestG.set(ck, ch.s.g);
+        const pushed = hpush({ s: ch.s, seq: seq++ });
+        add({
+          s: ch.s, line: 462, tone: 'push', tag: 'دخل الطابور',
+          newCell: nr * COLS + nc, arrow, mark: ck,
+          heapPath: ancestors(pushed), heapOp: { kind: 'push', g: ch.s.g },
+          msg: knownC === undefined
+            ? 'الحالة غير مسجّلة سابقًا ⇒ نضيفها إلى <b>bestG</b> ثم إلى الطابور بأولوية <b>g = ' + ch.s.g + '</b>.'
+            : 'نفس الحالة كانت مسجّلة بتكلفة ' + knownC + '، ووصلناها الآن بـ ' + ch.s.g +
+              ' ⇒ نحدّث <b>bestG</b> ونضيف النسخة الأرخص.'
+        });
+      } else {
+        add({
+          s: ch.s, line: 460, tone: 'skip', tag: 'مرفوض',
+          newCell: nr * COLS + nc, arrow,
+          msg: 'هذه الحالة مسجّلة بتكلفة <b>' + knownC + '</b> وهي ليست أكبر من ' + ch.s.g +
+               ' ⇒ لا نضيفها. الأرخص موجود أصلًا في <b>bestG</b>.'
+        });
+      }
+    }
+  }
+}
+
+/* =====================================================================
+   3) رسم اللوحة
+   ===================================================================== */
+const GAP = 0.12;
+const SPAN = COLS * (1 + GAP) - GAP;
+const pct = u => (u / SPAN * 100) + '%';
+const center = v => v * (1 + GAP) + 0.5;
+
+const boardEl = document.getElementById('board');
+const tagEl = document.getElementById('tag');
+const msgEl = document.getElementById('msg');
+const narrationEl = document.getElementById('narration');
+const thumbsEl = document.getElementById('thumbs');
+const codeEl = document.getElementById('code');
+const legendEl = document.getElementById('legend');
+
+function polyline(cells, color) {
+  if (!cells || cells.length < 2) return '';
+  const pts = cells.map(i => center(i % COLS) + ',' + center(Math.floor(i / COLS))).join(' ');
+  return '<polyline class="path" points="' + pts + '" stroke="' + color + '"/>';
+}
+
+function svgFor(f) {
+  let s = '<svg class="overlay" viewBox="0 0 ' + SPAN + ' ' + SPAN + '">';
+  f.done.forEach((p, i) => { s += polyline(p, PAIR_COLORS[i + 1]); });
+  s += polyline(f.path, PAIR_COLORS[f.cur] || '#ffffff');
+  if (f.arrow) {
+    s += '<line class="arrow" x1="' + center(f.arrow.c0) + '" y1="' + center(f.arrow.r0) +
+         '" x2="' + center(f.arrow.c1) + '" y2="' + center(f.arrow.r1) + '"/>';
+  }
+  return s + '</svg>';
+}
+
+function costBadge(f) {
+  const a = f.arrow;
+  const x = (center(a.c0) + center(a.c1)) / 2;
+  const y = (center(a.r0) + center(a.r1)) / 2;
+  return '<div class="cost' + (a.turn ? ' turn' : '') + '" dir="ltr" style="left:' + pct(x) + ';top:' + pct(y) + '">+' +
+         a.cost + (a.turn ? ' <em>منعطف</em>' : '') + '</div>';
+}
+
+function renderBoard(f) {
+  const headIdx = f.cur <= PAIRS ? f.hr * COLS + f.hc : -1;
+  let html = '';
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const i = r * COLS + c, v = f.b[i];
+      let cls = 'cell';
+      let style = 'left:' + pct(c * (1 + GAP)) + ';top:' + pct(r * (1 + GAP)) +
+                  ';width:' + pct(1) + ';height:' + pct(1);
+      let given = false;
+
+      if (v > 0) {
+        cls += ' filled';
+        given = (r === SR[v] && c === SC[v]) || (r === ER[v] && c === EC[v]);
+        if (given) cls += ' endpoint';
+        style += ';--pc:' + PAIR_COLORS[v] + ';--rgb:' + PAIR_RGB[v];
+      }
+      if (i === headIdx) cls += ' head';
+      if (i === f.newCell) cls += ' new';
+
+      html += '<div class="' + cls + '" style="' + style + '">' +
+              (given ? '<span class="v">' + v + '</span>' : (v > 0 ? '' : '<i class="dot"></i>')) +
+              '</div>';
+    }
+  }
+
+  html += svgFor(f);
+  if (f.arrow) html += costBadge(f);
+  boardEl.innerHTML = html;
+
+  tagEl.className = 'tag ' + (f.tone || '');
+  tagEl.textContent = f.tag;
+}
+
+/* =====================================================================
+   4) بطاقات الكود: تابع واحد في كل بطاقة، بلا تمرير داخلي
+   ===================================================================== */
+const CODE = [
+  {
+    fn: 'ucs()',
+    role: 'الحلقة الرئيسية · سطور 437 إلى 467',
+    lines: [
+      { n: 437, t: '    public static NumberLink ucs(NumberLink start) {' },
+      { n: 438, t: '        if (start == null)' },
+      { n: 439, t: '            return null;' },
+      { n: 441, t: '        Map<NumberLink, Integer> bestG = new HashMap<>();' },
+      { n: 443, t: '        PriorityQueue<NumberLink> frontier = new PriorityQueue<>(' },
+      { n: 444, t: '                (a, b) -> Integer.compare(a.getG(), b.getG()));' },
+      { n: 446, t: '        frontier.add(start);' },
+      { n: 447, t: '        bestG.put(start, start.getG());' },
+      { n: 449, t: '        while (!frontier.isEmpty()) {' },
+      { n: 450, t: '            NumberLink current = frontier.poll();' },
+      { n: 452, t: '            if (current.getG() > bestG.get(current))' },
+      { n: 453, t: '                continue;' },
+      { n: 455, t: '            if (current.isGoal())' },
+      { n: 456, t: '                return current;' },
+      { n: 458, t: '            for (NumberLink next : current.getNextStates()) {' },
+      { n: 459, t: '                Integer known = bestG.get(next);' },
+      { n: 460, t: '                if (known == null || next.getG() < known) {' },
+      { n: 461, t: '                    bestG.put(next, next.getG());' },
+      { n: 462, t: '                    frontier.add(next);' },
+      { n: 463, t: '                }' },
+      { n: 464, t: '            }' },
+      { n: 465, t: '        }' },
+      { n: 466, t: '        return null;' },
+      { n: 467, t: '    }' }
+    ]
+  },
+  {
+    fn: 'makeChild()',
+    role: 'يبني الابن ويحسب تكلفته · 195 إلى 202',
+    lines: [
+      { n: 195, t: '    private NumberLink makeChild(int row, int col, int dir) {' },
+      { n: 196, t: '        NumberLink child = new NumberLink(this);' },
+      { n: 197, t: '        child.g = g + stepCost(dir);' },
+      { n: 198, t: '        child.lastDir = dir;' },
+      { n: 199, t: '        child.stepTo(row, col);' },
+      { n: 200, t: '        child.parent = this;' },
+      { n: 201, t: '        return child;' },
+      { n: 202, t: '    }' }
+    ]
+  },
+  {
+    fn: 'stepCost()',
+    role: 'قاعدة التكلفة: 1 أو 2 · 188 إلى 193',
+    lines: [
+      { n: 188, t: '    private int stepCost(int dir) {' },
+      { n: 189, t: '        if (lastDir != DIR_NONE && dir != lastDir) {' },
+      { n: 190, t: '            return 2;' },
+      { n: 191, t: '        }' },
+      { n: 192, t: '        return 1;' },
+      { n: 193, t: '    }' }
+    ]
+  }
+];
+
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function hl(line) {
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|\b(public|private|protected|static|final|void|int|boolean|return|if|else|for|while|new|null|true|false|class|continue)\b|\b(\d+)\b|\b([A-Z][A-Za-z0-9_]*)\b/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    const tok = m[0];
+    const cls = m[1] ? 'tk-c' : m[2] ? 'tk-s' : m[3] ? 'tk-k' : m[4] ? 'tk-n' : 'tk-t';
+    out += '<span class="' + cls + '">' + esc(tok) + '</span>';
+    last = m.index + tok.length;
+  }
+  return out + esc(line.slice(last));
+}
+
+const lineEls = {}, lineCards = {};
+for (const card of CODE) {
+  const sec = document.createElement('section');
+  sec.className = 'ccard';
+  sec.dataset.fn = card.fn;
+
+  const head = document.createElement('div');
+  head.className = 'chead';
+  head.innerHTML = '<b dir="ltr">' + esc(card.fn) + '</b><span dir="rtl">' + card.role + '</span>';
+
+  const body = document.createElement('div');
+  body.className = 'clines';
+
+  for (const item of card.lines) {
+    const d = document.createElement('div');
+    d.className = 'ln';
+    d.id = 'L' + item.n;
+    d.innerHTML = '<span class="no">' + item.n + '</span><code>' + (hl(item.t) || '&nbsp;') + '</code>';
+    body.appendChild(d);
+    lineEls[item.n] = d;
+    lineCards[item.n] = sec;
+  }
+
+  sec.appendChild(head);
+  sec.appendChild(body);
+  codeEl.appendChild(sec);
+}
+
+const nowFnEl = document.getElementById('nowFn');
+const nowLineEl = document.getElementById('nowLine');
+
+let activeLine = null, activeCard = null;
+function highlight(line) {
+  const el = lineEls[line];
+  if (!el) return;
+
+  if (activeLine !== null && lineEls[activeLine]) lineEls[activeLine].classList.remove('on');
+  el.classList.add('on');
+  activeLine = line;
+
+  const card = lineCards[line];
+  if (activeCard && activeCard !== card) activeCard.classList.remove('on');
+  card.classList.add('on');
+  activeCard = card;
+
+  nowFnEl.textContent = card.dataset.fn;
+  nowLineEl.textContent = line;
+}
+
+/* =====================================================================
+   5) الشرح والأرقام والطابور
+   ===================================================================== */
+const stG = document.getElementById('stG');
+const stExp = document.getElementById('stExp');
+const stFront = document.getElementById('stFront');
+const stKnown = document.getElementById('stKnown');
+const stPair = document.getElementById('stPair');
+const heapEl = document.getElementById('heap');
+const heapArrEl = document.getElementById('heapArr');
+const heapHintEl = document.getElementById('heapHint');
+
+/* ---------- الـ heap: شجرة ثنائية + مصفوفة ---------- */
+const HEAP_Y = [26, 80, 134, 188];
+const HEAP_NODES = 15;
+
+function heapTitle(c) {
+  return 'g = ' + c.g + (c.cur <= PAIRS
+    ? ' · الزوج ' + c.cur + ' · الرأس (' + c.hr + ',' + c.hc + ')'
+    : ' · مكتمل');
+}
+
+function renderHeap(f) {
+  const n = Math.min(f.heapFirst.length, HEAP_NODES);
+  const size = f.heapSize;
+
+  if (f.heapOp) {
+    const op = f.heapOp;
+    heapHintEl.className = 'hint ' + op.kind;
+    heapHintEl.textContent =
+      op.kind === 'push' ? 'أُضيفت g = ' + op.g :
+      op.kind === 'pop' ? 'سُحبت g = ' + op.g :
+      'أُزيلت نسخة g = ' + op.g;
+  } else {
+    heapHintEl.className = 'hint';
+    heapHintEl.textContent = 'الحجم ' + size + ' · الجذر = الأصغر g';
+  }
+
+  if (!n) {
+    heapEl.innerHTML = '<div class="heap-empty">الطابور فارغ</div>';
+    heapArrEl.innerHTML = '';
+    return;
+  }
+
+  /* مواضع الشجرة: المستوى L فيه 2^L عقدة */
+  const pos = [];
+  for (let i = 0; i < n; i++) {
+    const lvl = Math.floor(Math.log2(i + 1));
+    const slot = i - ((1 << lvl) - 1);
+    pos[i] = { x: (slot + 0.5) / (1 << lvl) * 100, y: HEAP_Y[lvl] };
+  }
+
+  let svg = '<svg class="hlinks" viewBox="0 0 100 214" preserveAspectRatio="none">';
+  for (let i = 1; i < n; i++) {
+    const p = (i - 1) >> 1;
+    svg += '<line x1="' + pos[p].x + '" y1="' + pos[p].y +
+           '" x2="' + pos[i].x + '" y2="' + pos[i].y + '"/>';
+  }
+  svg += '</svg>';
+
+  let nodes = '';
+  for (let i = 0; i < n; i++) {
+    const c = f.heapFirst[i];
+    let cls = 'hn';
+    if (i === 0) cls += ' root';
+    if (f.heapPath && f.heapPath.indexOf(i) !== -1) cls += ' path';
+    if (f.mark && c.key === f.mark) cls += ' new';
+    if (c.stale) cls += ' stale';
+    nodes += '<div class="' + cls + '" style="left:' + pos[i].x + '%;top:' + pos[i].y + 'px" ' +
+             'title="' + heapTitle(c) + '">' + c.g +
+             '<i class="p" style="background:' + (c.cur <= PAIRS ? PAIR_COLORS[c.cur] : '#3a414c') + '"></i>' +
+             '</div>';
+  }
+
+  heapEl.innerHTML = svg + nodes +
+    (size > n ? '<div class="heap-more">+ ' + (size - n) + ' عقدة أعمق</div>' : '');
+
+  /* المصفوفة كما هي فعلاً في الذاكرة */
+  const shown = Math.min(size, 12);
+  let arr = '';
+  for (let i = 0; i < shown; i++) {
+    const c = f.heapFirst[i];
+    let cls = 'ha';
+    if (i === 0) cls += ' root';
+    if (f.heapPath && f.heapPath.indexOf(i) !== -1) cls += ' on';
+    if (c.stale) cls += ' stale';
+    arr += '<span class="' + cls + '" title="' + heapTitle(c) + '"><b>' + c.g +
+           '</b><i>' + i + '</i></span>';
+  }
+  if (size > shown) arr += '<span class="ha more">+' + (size - shown) + '</span>';
+  heapArrEl.innerHTML = arr;
+}
+
+function renderChips(f) {
+  if (!f.chips.length) {
+    thumbsEl.innerHTML = '<div class="more">الطابور فارغ</div>';
+    return;
+  }
+  let h = '';
+  f.chips.forEach((c, i) => {
+    h += '<div class="thumb' + (i === 0 ? ' next' : '') + (c.key === f.mark ? ' mark' : '') + '">';
+    h += '<div class="mini" style="grid-template-columns:repeat(' + COLS + ',7px)">';
+    for (let j = 0; j < N; j++) {
+      const v = c.b[j];
+      const style = v ? 'background:' + PAIR_COLORS[v] : '';
+      const isHead = c.cur <= PAIRS && j === c.hr * COLS + c.hc;
+      h += '<i class="' + (isHead ? 'h' : '') + '" style="' + style + '"></i>';
+    }
+    h += '</div><em>g ' + c.g + '</em></div>';
+  });
+  const rest = f.stats.frontier - f.chips.length;
+  if (rest > 0) h += '<div class="more">+ ' + rest + ' حالة أخرى في الطابور</div>';
+  thumbsEl.innerHTML = h;
+}
+
+function renderFrame(f) {
+  renderBoard(f);
+  highlight(f.line);
+
+  narrationEl.className = 'narration ' + (f.tone || '');
+  msgEl.innerHTML = f.msg;
+
+  stG.textContent = f.g;
+  stExp.textContent = f.stats.exp;
+  stFront.textContent = f.stats.frontier;
+  stKnown.textContent = f.stats.known;
+  stPair.textContent = f.cur <= PAIRS ? f.cur + ' / ' + PAIRS : 'اكتمل';
+
+  renderHeap(f);
+  renderChips(f);
+}
+
+/* =====================================================================
+   6) التشغيل
+   ===================================================================== */
+const playBtn = document.getElementById('play');
+const playLabel = document.getElementById('playLabel');
+const nextBtn = document.getElementById('next');
+const prevBtn = document.getElementById('prev');
+const expandBtn = document.getElementById('expand');
+const jumpBtn = document.getElementById('jump');
+const resetBtn = document.getElementById('reset');
+const speedEl = document.getElementById('speed');
+const scrubEl = document.getElementById('scrub');
+const posEl = document.getElementById('pos');
+
+const SPEEDS = [800, 550, 380, 260, 170, 110, 70, 40];
+let idx = 0, playing = false, timer = null;
+
+function setFrame(i) {
+  idx = Math.max(0, Math.min(frames.length - 1, i));
+  renderFrame(frames[idx]);
+  scrubEl.value = idx;
+  posEl.textContent = (idx + 1) + ' / ' + frames.length;
+  prevBtn.disabled = idx === 0;
+  nextBtn.disabled = idx === frames.length - 1;
+  jumpBtn.disabled = idx === frames.length - 1;
+}
+
+function loop() {
+  if (!playing) return;
+  if (idx >= frames.length - 1) { pause(); return; }
+  setFrame(idx + 1);
+  if (idx >= frames.length - 1) { pause(); return; }
+  timer = setTimeout(loop, SPEEDS[+speedEl.value]);
+}
+
+function play() {
+  if (playing) return;
+  if (idx >= frames.length - 1) setFrame(0);
+  playing = true;
+  playBtn.classList.add('playing');
+  playLabel.textContent = 'إيقاف';
+  loop();
+}
+
+function pause() {
+  playing = false;
+  clearTimeout(timer);
+  playBtn.classList.remove('playing');
+  playLabel.textContent = 'تشغيل';
+}
+
+playBtn.onclick = () => playing ? pause() : play();
+nextBtn.onclick = () => { pause(); setFrame(idx + 1); };
+prevBtn.onclick = () => { pause(); setFrame(idx - 1); };
+resetBtn.onclick = () => { pause(); setFrame(0); };
+jumpBtn.onclick = () => { pause(); setFrame(frames.length - 1); };
+
+/* يقفز إلى الحالة التالية التي تُسحب من الطابور */
+expandBtn.onclick = () => {
+  pause();
+  for (let i = idx + 1; i < frames.length; i++) {
+    if (frames[i].tone === 'pop' || frames[i].tone === 'goal') { setFrame(i); return; }
+  }
+  setFrame(frames.length - 1);
+};
+
+scrubEl.oninput = () => { pause(); setFrame(+scrubEl.value); };
+speedEl.oninput = () => { if (playing) { clearTimeout(timer); loop(); } };
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); playing ? pause() : play(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); pause(); setFrame(idx + 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); pause(); setFrame(idx - 1); }
+  else if (e.key === 'r' || e.key === 'R') { pause(); setFrame(0); }
+});
+
+/* =====================================================================
+   7) الإقلاع
+   ===================================================================== */
+legendEl.innerHTML =
+  PAIR_COLORS.slice(1, PAIRS + 1).map((c, i) =>
+    '<span class="li"><i style="background:' + c + '"></i>الزوج ' + (i + 1) + '</span>'
+  ).join('') +
+  '<span class="li"><i class="ring"></i>الرأس</span>' +
+  '<span class="li"><i class="diamond"></i>منعطف = 2</span>';
+
+buildTrace();
+scrubEl.max = frames.length - 1;
+setFrame(0);
+</script>
+</body>
+</html>
